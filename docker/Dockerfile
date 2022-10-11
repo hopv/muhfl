@@ -7,7 +7,8 @@ ENV ROOT_PATH $HOME/repos
 RUN mkdir $HOME/repos
 
 RUN sudo apt update && sudo apt install wget -y
-RUN eval $(opam env) && opam install dune cmdliner core fmt logs lwt menhirLib ppx_compare \
+RUN opam pin add core v0.14.1
+RUN eval $(opam env) && opam install dune cmdliner fmt logs lwt menhirLib ppx_compare \
   ppx_deriving ppx_deriving_cmdliner ppx_let ppx_sexp_conv menhir async yojson -y
 
 # RetHFL (katsura-solver)
@@ -60,8 +61,9 @@ RUN eval $(opam env) && dune build bin/muapprox_main.exe
 WORKDIR $ROOT_PATH
 RUN --mount=type=secret,id=ssh,target=/home/opam/.ssh/id_rsa,uid=1000,gid=1000 git clone -b develop --depth 1 git@bitbucket.org:ketanahashi/fptprove.git
 WORKDIR $ROOT_PATH/fptprove
-RUN sudo apt install libblas-dev libgmp-dev liblapack-dev pkg-config python2.7 libffi-dev libglpk-dev libmpfr-dev -y
+RUN sudo apt install libblas-dev libgmp-dev liblapack-dev pkg-config python2.7 python3 libffi-dev libglpk-dev libmpfr-dev -y
 RUN eval $(opam env) && opam install oUnit ocamlgraph ppx_deriving_yojson z3 zarith libsvm lp lp-glpk lp-gurobi minisat apronext -y
+COPY dune-project .
 RUN eval $(opam env) && dune build main.exe
 
 
