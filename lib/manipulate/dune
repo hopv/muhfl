@@ -1,6 +1,6 @@
 (library
  (name manipulate)
- (public_name muapprox.manipulate)
+ (public_name muhfl.manipulate)
  (inline_tests)
  (libraries
    str

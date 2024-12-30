@@ -58,7 +58,7 @@ type s_thes_rules = Type.simple_ty thes_rules
 module Print_temp = struct
   open Hflmc2_syntax.Print
     
-  let pid : Stdlib__format.formatter -> int -> unit = fun fmt _i ->
+  let pid : Stdlib.Format.formatter -> int -> unit = fun fmt _i ->
     (* Fmt.pf fmt "<%d>" i *)
     Fmt.string fmt ""
   

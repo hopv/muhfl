@@ -12,19 +12,19 @@ let map_file_path path converter =
 
 let main filepath show_style disable_optimization solve always_use_canonical_type_env use_branching_time =
   let show_raw_id_name = match show_style with Raw_id -> true | _ -> false in
-  let phi, _ = Muapprox.convert_ltl filepath show_raw_id_name always_use_canonical_type_env use_branching_time in
+  let phi, _ = Muhfl.convert_ltl filepath show_raw_id_name always_use_canonical_type_env use_branching_time in
   let phi =
     if not disable_optimization then
       let phi = Manipulate.Hes_optimizer.simplify phi in
-      let hflz = Muapprox.eliminate_unused_argument phi in
+      let hflz = Muhfl.eliminate_unused_argument phi in
       Manipulate.Hes_optimizer.simplify hflz
     else phi in
   let phi =
     match show_style with
-    | Abbrev_id -> Muapprox.abbrev_variable_names phi
+    | Abbrev_id -> Muhfl.abbrev_variable_names phi
     | _ -> phi in
   let path2 = map_file_path filepath (fun (a, b, _) -> (a, b, ".in")) in
-  ignore @@ Muapprox.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:true true phi;
+  ignore @@ Muhfl.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:true true phi;
   print_endline @@ "saved: " ^ path2;
   if solve then begin
     ignore @@ Unix.system @@ "dune exec ./bin/muapprox_main.exe -- --instantiate-exists \"" ^ path2 ^ "\""

@@ -40,7 +40,7 @@ let report_times () =
         in Print.pr "%s %f sec@." s v
       end
 
-let show_result = Muapprox_prover.Status.string_of
+let show_result = Muhfl_prover.Status.string_of
 
 let check_predicate_name (_, psi) =
   List.iter
@@ -93,7 +93,7 @@ let parse file =
   psi
 
 let get_solve_options file =
-  let open Muapprox_prover.Solve_options in
+  let open Muhfl_prover.Solve_options in
   let approx_parameter, use_custom_parameter =
     get_approx_parameter !Options.coe !Options.coe_arguments !Options.default_lexicographic_order in
   Manipulate.Print_syntax.formula_margin := !Options.formula_margin;
@@ -173,12 +173,12 @@ let main file cont =
   let psi = if !Options.aggressive_simplification then simplify_agg_ !Options.no_eliminate_unused_arguments psi else psi in
   let psi = if solve_options.reordering_of_arguments then Manipulate.Reorder_arguments.run psi true !Options.no_temp_files else psi in
   let psi = if solve_options.add_nu_level_extra_arguments then add_nu_level_extra_arguments psi else psi in
-  Muapprox_prover.check_validity solve_options psi (fun (s1, info) -> cont (s1, info))
+  Muhfl_prover.check_validity solve_options psi (fun (s1, info) -> cont (s1, info))
 
 let assign_serial_to_vars_hes = Manipulate.Check_formula_equality.assign_serial_to_vars_hes
 let check_equal_hes = Manipulate.Check_formula_equality.check_equal_hes
-let show_debug_context = Muapprox_prover.show_debug_context
-let show_debug_contexts = Muapprox_prover.show_debug_contexts
+let show_debug_context = Muhfl_prover.show_debug_context
+let show_debug_contexts = Muhfl_prover.show_debug_contexts
 let abbrev_variable_numbers_hes = Manipulate.Abbrev_variable_numbers.abbrev_variable_numbers_hes
 let convert_ltl = Ltl_program.convert_ltl
 let convert_all = Ltl_program.convert_all
@@ -187,7 +187,7 @@ let eliminate_unused_argument = Ltl_program.eliminate_unused_argument
 let infer_type = Ltl_program.infer_type
 let abbrev_variable_names = Ltl_program.abbrev_variable_names
 let branching_time_program = Branching_time_program.branching_time_program
-let convert_nu_hflz_to_program_with_exception = Muapprox_prover.Mochi_solver.convert_nu_hflz_to_program_with_exception
+let convert_nu_hflz_to_program_with_exception = Muhfl_prover.Mochi_solver.convert_nu_hflz_to_program_with_exception
 let remove_disjunctions = Manipulate.Remove_disjunctions.convert
 let constant_propagation =  Manipulate.Constant_propagation.run
 let simplify_if_condition = Manipulate.Simplify_if_condition.run

@@ -2,13 +2,13 @@
 
 module ConvertLib = struct
   let trans_op op = match op with
-    | Muapprox.Syntax.Arith.Add -> "+"
+    | Muhfl.Syntax.Arith.Add -> "+"
     | Sub -> "-"
     | Mult -> "*"
     | Div | Mod -> failwith "trans_op: unsupported operator"
   
   let trans_pred op = match op with
-    | Muapprox.Syntax.Formula.Eq -> "="
+    | Muhfl.Syntax.Formula.Eq -> "="
     | Le -> "<="
     | Ge -> ">="
     | Lt -> "<"
@@ -17,7 +17,7 @@ module ConvertLib = struct
 
   let rec trans_expr expr =
     match expr with
-    | Muapprox.Syntax.Raw_hflz.Bool b -> string_of_bool b
+    | Muhfl.Syntax.Raw_hflz.Bool b -> string_of_bool b
     | Var v -> v
     | Or (e1, e2)  -> "(or "  ^ trans_expr e1 ^ " " ^ trans_expr e2 ^ ")"
     | And (e1, e2) -> "(and " ^ trans_expr e1 ^ " " ^ trans_expr e2 ^ ")"
@@ -49,10 +49,10 @@ let parse_to_raw file =
     lexbuf.lex_start_p <- { lexbuf.lex_start_p with pos_fname = file };
     lexbuf.lex_curr_p  <- { lexbuf.lex_curr_p  with pos_fname = file };
     lexbuf
-    |> Muapprox.Syntax.Parser.main
+    |> Muhfl.Syntax.Parser.main
   end
 
-let show_as_prefix_notation {Muapprox.Syntax.Raw_hflz.body; _} =
+let show_as_prefix_notation {Muhfl.Syntax.Raw_hflz.body; _} =
   print_endline @@ trans_expr body
 
 let main file =

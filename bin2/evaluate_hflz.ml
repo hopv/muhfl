@@ -12,11 +12,11 @@ let main path1 max_expansion max_expansion_show shortcircuit try_values =
   let max_expansion = match max_expansion with Some i -> i | None -> 3 in
   let max_expansion_show = match max_expansion_show with Some i -> i | None -> 2 in
   let try_values = match try_values with None -> [1; 2] | Some try_values -> String.split try_values ~on:',' |> List.map ~f:int_of_string in
-  Muapprox.Manipulate.Evaluate_hflz.max_expansion := max_expansion;
-  Muapprox.Manipulate.Evaluate_hflz.max_expansion_show := max_expansion_show;
-  Muapprox.Manipulate.Evaluate_hflz.shortcircuit := shortcircuit;
-  let phi1 = Muapprox.parse path1 in
-  let phi1 = Muapprox.Manipulate.Evaluate_hflz.evaluate_hes phi1 try_values in
+  Muhfl.Manipulate.Evaluate_hflz.max_expansion := max_expansion;
+  Muhfl.Manipulate.Evaluate_hflz.max_expansion_show := max_expansion_show;
+  Muhfl.Manipulate.Evaluate_hflz.shortcircuit := shortcircuit;
+  let phi1 = Muhfl.parse path1 in
+  let phi1 = Muhfl.Manipulate.Evaluate_hflz.evaluate_hes phi1 try_values in
   ignore @@ phi1
 
 

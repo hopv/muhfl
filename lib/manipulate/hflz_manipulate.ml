@@ -1010,7 +1010,7 @@ let elim_mu_with_rec (entry, rules) coe1 coe2 lexico_pair_number id_type_map use
           range 1 (Env.lookup rec_tvar lexico_pair_number)
           |> List.map (fun i -> 
             if i = 1 then rec_tvar
-            else Id.gen ~name:(rec_tvar.name ^ "_" ^ string_of_int i) (Type.TyInt)
+            else Id.gen ~name:(rec_tvar.Id.name ^ "_" ^ string_of_int i) (Type.TyInt)
           )
         )
       )

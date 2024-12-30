@@ -1,9 +1,9 @@
 (library
- (name muapprox_prover)
- (public_name muapprox.muapprox_prover)
+ (name muhfl_prover)
+ (public_name muhfl.muhfl_prover)
  (libraries
    hflmc2_syntax
-   muapprox.manipulate
+   muhfl.manipulate
    async
    yojson
    str)

@@ -1,13 +1,13 @@
 open Core
 
 let main path1 path2 = 
-  let phi1 = Muapprox.parse path1 in
-  let phi2 = Muapprox.parse path2 in
-  let phi1' = Muapprox.assign_serial_to_vars_hes phi1 in
-  let phi2' = Muapprox.assign_serial_to_vars_hes phi2 in
+  let phi1 = Muhfl.parse path1 in
+  let phi2 = Muhfl.parse path2 in
+  let phi1' = Muhfl.assign_serial_to_vars_hes phi1 in
+  let phi2' = Muhfl.assign_serial_to_vars_hes phi2 in
   let phi1' = Hflmc2_syntax.Hflz.merge_entry_rule phi1' in
   let phi2' = Hflmc2_syntax.Hflz.merge_entry_rule phi2' in
-  let res, error_path = Muapprox.check_equal_hes phi1' phi2' in
+  let res, error_path = Muhfl.check_equal_hes phi1' phi2' in
   (if res then
     print_endline "(func) Equal"
   else
