@@ -241,7 +241,7 @@ let trans_non_det global_env expr var_id ev =
   in
   let args = free_variables @ [{var_id with ty=Type.TyInt}] in
   let funty = to_funty (List.map (fun i -> i.Id.ty) args) in
-  let var = gen_id (capitalize_first ev ^ "_sub") funty in
+  let var = gen_id ~name:(capitalize_first ev ^ "_sub") funty in
   let new_rule = {var; args; body = expr} in
   let org_body =
     let rec g ls = match ls with
