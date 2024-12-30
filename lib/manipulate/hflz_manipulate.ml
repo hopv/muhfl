@@ -1000,21 +1000,20 @@ let elim_mu_with_rec (entry, rules) coe1 coe2 lexico_pair_number id_type_map use
           Some (pvar, rectvar_of_pvar pvar)
         else None)
     |> Env.create in
-  let lexico_pair_number =
-    Env.create @@ List.map (fun (_, tvar) -> (tvar, lexico_pair_number)) rec_tvars in
   let rec_lex_tvars =
+    rec_tvars
+    |>
     List.map
       (fun (_, rec_tvar) ->
-        (
-          rec_tvar,
-          range 1 (Env.lookup rec_tvar lexico_pair_number)
-          |> List.map (fun i -> 
+        let ids =
+          range 1 lexico_pair_number
+          |> List.map (fun i ->
             if i = 1 then rec_tvar
             else Id.gen ~name:(rec_tvar.Id.name ^ "_" ^ string_of_int i) (Type.TyInt)
           )
-        )
-      )
-      rec_tvars |>
+        in
+        (rec_tvar, ids))
+    |>
     Env.create in
   (* make new hes *)
   let rules = List.map
@@ -1029,7 +1028,7 @@ let elim_mu_with_rec (entry, rules) coe1 coe2 lexico_pair_number id_type_map use
         List.map snd scoped_rec_tvars |>
         List.map (fun v -> Env.lookup v rec_lex_tvars) |>
         List.flatten
-        in
+      in
       let body = 
         to_app
           body @@
