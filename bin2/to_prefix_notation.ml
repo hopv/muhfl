@@ -35,7 +35,7 @@ end
 open ConvertLib
 (* open Core *)
 
-let map_file_path path converter =
+let _map_file_path path converter =
   let dir, base, ext =
     Stdlib.Filename.dirname path,
     Stdlib.Filename.remove_extension (Stdlib.Filename.basename path),

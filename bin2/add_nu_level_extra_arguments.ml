@@ -1,6 +1,6 @@
 open Core
 
-type show_style = Asis_id | Abbrev_id
+type _show_style = Asis_id | Abbrev_id
 
 let map_file_path path converter =
   let dir, base, ext =
