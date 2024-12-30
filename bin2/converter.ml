@@ -1,9 +1,9 @@
 open Core
 
 let main path1 show_forall =
-  let phi1 = Muapprox.parse path1 in
+  let phi1 = Muhfl.parse path1 in
   let path2 = Stdlib.Filename.remove_extension path1 ^ ".in" in
-  let path2 = Muapprox.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 show_forall phi1 in
+  let path2 = Muhfl.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 show_forall phi1 in
   print_endline @@ "Converted to " ^ path2
 
 let command =

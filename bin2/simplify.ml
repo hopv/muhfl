@@ -12,33 +12,33 @@ let map_file_path path converter =
 
 let main filepath optimization agg show_style trivial_only_agg output_cp =
   Logs.set_level (Some Logs.Debug);
-  let hes = Muapprox.parse filepath in
+  let hes = Muhfl.parse filepath in
   let () =
     if output_cp then
-      (let hes = Muapprox.constant_propagation hes in
+      (let hes = Muhfl.constant_propagation hes in
       let path2 = filepath ^ "_cp.in" in
-      ignore @@ Muapprox.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:(Stdlib.(=) show_style Abbrev_id) true hes;
+      ignore @@ Muhfl.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:(Stdlib.(=) show_style Abbrev_id) true hes;
       print_endline @@ "Constant Propagation: saved in " ^ path2) else ()
   in
   let () =
-    let hes = Muapprox.simplify_if_condition "z3" hes in
+    let hes = Muhfl.simplify_if_condition "z3" hes in
     let path2 = filepath ^ "_simif.in" in
-    ignore @@ Muapprox.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:(Stdlib.(=) show_style Abbrev_id) true hes;
+    ignore @@ Muhfl.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:(Stdlib.(=) show_style Abbrev_id) true hes;
     print_endline @@ "Simplify if conditions: saved in " ^ path2
   in
   let hes =
-    if optimization then Muapprox.eliminate_unused_argument hes else hes in
-  let hes = Muapprox.Manipulate.Hes_optimizer.simplify_all hes in
+    if optimization then Muhfl.eliminate_unused_argument hes else hes in
+  let hes = Muhfl.Manipulate.Hes_optimizer.simplify_all hes in
   let hes =
     if agg then Manipulate.Hes_optimizer.simplify_agg trivial_only_agg hes else hes in
   let hes =
     match show_style with
-    | Abbrev_old_id -> Muapprox.abbrev_variable_names hes
-    | Abbrev_id -> Muapprox.abbrev_variable_numbers_hes hes
+    | Abbrev_old_id -> Muhfl.abbrev_variable_names hes
+    | Abbrev_id -> Muhfl.abbrev_variable_numbers_hes hes
     | Asis_id -> hes in
   let path2 = map_file_path filepath (fun (a, b, c) -> (a, b ^ "_simplified", c)) in
-  ignore @@ Muapprox.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:(Stdlib.(<>) show_style Asis_id) true hes;
-  print_endline @@ "Simplified to " ^ path2
+  ignore @@ Muhfl.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:(Stdlib.(<>) show_style Asis_id) true hes;
+ print_endline @@ "Simplified to " ^ path2
 
 let read_show_style = 
   Command.Arg_type.create (fun style ->

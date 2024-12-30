@@ -1,9 +1,9 @@
 open Core
 
 let main path1 =
-  let phi1 = Muapprox.parse path1 in
+  let phi1 = Muhfl.parse path1 in
   let output =
-    Hflmc2_util.fmt_string Muapprox.convert_nu_hflz_to_program_with_exception phi1 in
+    Hflmc2_util.fmt_string Muhfl.convert_nu_hflz_to_program_with_exception phi1 in
   print_endline output
 
 let command =

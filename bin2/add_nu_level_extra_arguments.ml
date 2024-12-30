@@ -12,10 +12,10 @@ let map_file_path path converter =
 
 let main filepath =
   Logs.set_level (Some Logs.Debug);
-  let hes = Muapprox.parse filepath in
-  let hes = Muapprox.add_nu_level_extra_arguments hes true false in
+  let hes = Muhfl.parse filepath in
+  let hes = Muhfl.add_nu_level_extra_arguments hes true false in
   let path2 = map_file_path filepath (fun (a, b, c) -> (a, b ^ "_add_nu_level_extra_arguments", c)) in
-  ignore @@ Muapprox.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:true true hes;
+  ignore @@ Muhfl.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:true true hes;
   print_endline @@ "Saved as " ^ path2
 
 let command =

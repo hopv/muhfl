@@ -9,14 +9,14 @@ let map_file_path path converter =
   Stdlib.Filename.concat dir (base ^ ext)
 
 let main path1 debug simplified_type no_abbrev =
-  let phi1 = Muapprox.parse path1 in
+  let phi1 = Muhfl.parse path1 in
   let path2 = map_file_path path1 (fun (a, b, c) -> (a, b ^ "_infer_flag_2", c)) in
   let phi1, id_type_map, id_ho_map =
-    Muapprox.Manipulate.Add_arguments_definition.output_debug_info := debug;
-    Muapprox.Manipulate.Add_arguments_definition.simplified_type := simplified_type;
-    let phi1 = Muapprox.Manipulate.Hes_optimizer.eliminate_unreachable_predicates phi1 in
-    let phi1 = Muapprox.Manipulate.Eliminate_unused_argument.eliminate_unused_argument phi1 in
-    Muapprox.Manipulate.Add_arguments_entry.infer true true phi1 1 0 false false
+    Muhfl.Manipulate.Add_arguments_definition.output_debug_info := debug;
+    Muhfl.Manipulate.Add_arguments_definition.simplified_type := simplified_type;
+    let phi1 = Muhfl.Manipulate.Hes_optimizer.eliminate_unreachable_predicates phi1 in
+    let phi1 = Muhfl.Manipulate.Eliminate_unused_argument.eliminate_unused_argument phi1 in
+    Muhfl.Manipulate.Add_arguments_entry.infer true true phi1 1 0 false false
   in
   print_endline @@ Hflmc2_util.fmt_string (fun fmt -> Manipulate.Print_syntax.(hflz_hes simple_ty_) fmt) phi1;
   let () =
@@ -26,8 +26,8 @@ let main path1 debug simplified_type no_abbrev =
     print_endline @@ "id_type_map: " ^ Hflmc2_util.show_list (fun s -> s) strs;
     print_endline @@ "id_ho_map: " ^ Hflmc2_util.show_list (fun (t, id) -> "(" ^ t.Id.name ^ ", " ^ id.Id.name ^ ")") id_ho_map
   in
-  let phi1 = if no_abbrev then phi1 else Muapprox.abbrev_variable_numbers_hes phi1 in
-  ignore @@ Muapprox.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:true true phi1;
+  let phi1 = if no_abbrev then phi1 else Muhfl.abbrev_variable_numbers_hes phi1 in
+  ignore @@ Muhfl.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:true true phi1;
   print_endline @@ "saved to " ^ path2
 
 

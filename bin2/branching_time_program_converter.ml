@@ -11,11 +11,11 @@ let map_file_path path converter =
   Stdlib.Filename.concat dir (base ^ ext)
 
 let main filepath disable_optimization disable_inlining show_style is_horsz agg =
-  let phi = Muapprox.branching_time_program is_horsz filepath in
+  let phi = Muhfl.branching_time_program is_horsz filepath in
   let phi =
     if not disable_optimization then
       let phi = Manipulate.Hes_optimizer.eliminate_unreachable_predicates phi in
-      let phi = Muapprox.eliminate_unused_argument phi in
+      let phi = Muhfl.eliminate_unused_argument phi in
       if not disable_inlining then
         let phi = Manipulate.Hes_optimizer.simplify_all phi in
         Manipulate.Hes_optimizer.simplify_agg (not agg) phi
@@ -23,10 +23,10 @@ let main filepath disable_optimization disable_inlining show_style is_horsz agg 
     else phi in
   let phi =
     match show_style with
-    | Abbrev_id -> Muapprox.abbrev_variable_names phi
+    | Abbrev_id -> Muhfl.abbrev_variable_names phi
     | Asis_id -> phi in
   let path2 = map_file_path filepath (fun (a, b, _) -> (a, b, ".in")) in
-  ignore @@ Muapprox.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:true true phi;
+  ignore @@ Muhfl.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:true true phi;
   print_endline @@ "saved: " ^ path2
   
 let read_show_style = 
