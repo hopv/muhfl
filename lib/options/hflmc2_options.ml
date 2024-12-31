@@ -251,7 +251,7 @@ let parse ?argv () : input option =
       $ term_setup_log () (* NOTE order matters *)
       $ term_set_up_params ()
   in
-  let cmd_value = Cmdliner.Cmd.v (Cmdliner.Cmd.info "muapprox") (term ()) in
+  let cmd_value = Cmdliner.Cmd.v (Cmdliner.Cmd.info "muhfl") (term ()) in
   match Cmdliner.Cmd.eval_value ?argv cmd_value with
   | Ok (`Ok []) -> Some `Stdin
   | Ok (`Ok [file]) -> Some (`File file)
