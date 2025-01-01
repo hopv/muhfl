@@ -275,7 +275,7 @@ let get_occuring_arith_terms id_type_map phi =
   go_hflz phi |> List.map fst
 
 let get_guessed_terms
-    (id_type_map : (unit Id.t, Hflz_util.variable_type, Hflmc2_syntax.IdMap.Key.comparator_witness) Base.Map.t)
+    (id_type_map : Hflz_util.variable_type Hflmc2_syntax.IdMap.t)
     arg_terms
     scoped_variables
     (id_ho_map : ('a Id.t * [ `Int ] Id.t) list) =
@@ -403,7 +403,7 @@ let encode_body_exists_formula_sub
     coe2
     hes_preds
     hfl
-    (id_type_map : (unit Id.t, Hflz_util.variable_type, Hflmc2_syntax.IdMap.Key.comparator_witness) Base.Map.t)
+    (id_type_map : Hflz_util.variable_type Hflmc2_syntax.IdMap.t)
     id_ho_map
     use_all_scoped_variables
     env = 
@@ -563,7 +563,7 @@ let encode_body_exists
     (coe1 : int)
     (coe2 : int)
     (hes : Hflmc2_syntax.Type.simple_ty Hflz.hes)
-    (id_type_map : (unit Print.Id.t, Hflz_util.variable_type, Hflmc2_syntax.IdMap.Key.comparator_witness) Hflmc2_util.Map.t)
+    (id_type_map : Hflz_util.variable_type Hflmc2_syntax.IdMap.t)
     (id_ho_map : ('b Print.Id.t * [ `Int ] Print.Id.t) list)
     (use_all_scoped_variables : bool) =
   let (entry, rules) = hes in
@@ -708,11 +708,11 @@ let make_app new_fml rec_vars formula_type_terms guessed_conditions =
 let replace_occurences
     (coe1: int)
     (coe2 : int)
-    (outer_mu_funcs : (unit Type.ty Id.t * unit Type.ty Id.t list) list)
+    (outer_mu_funcs : (Type.simple_ty Id.t * Type.simple_ty Id.t list) list)
     (scoped_rec_tvars : ('a Id.t * 'b Id.t) list)
-    (rec_tvars : ('a Id.t * unit Type.ty Type.arg Id.t) list)
+    (rec_tvars : ('a Id.t * Type.simple_ty Type.arg Id.t) list)
     (rec_lex_tvars : ('a Type.arg Id.t * 'a Type.arg Id.t list) list)
-    (id_type_map : (unit Id.t, Hflz_util.variable_type, Hflmc2_syntax.IdMap.Key.comparator_witness) Base.Map.t)
+    (id_type_map : Hflz_util.variable_type Hflmc2_syntax.IdMap.t)
     use_all_scoped_variables
     id_ho_map
     (fml : 'a Hflz.t) : 'a Hflz.t =
