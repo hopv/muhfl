@@ -340,7 +340,7 @@ let get_guessed_conditions_rep coe arg_terms term =
       let open Arith in
       let pterm = Op(Add, [term; Op(Mult, [Int coe; arg_term])]) in
       let nterm = Op(Add, [term; Op(Mult, [Int (-coe); arg_term])]) in
-      pterm :: [nterm]
+      [pterm; nterm]
     )
   |> List.flatten
 
@@ -379,11 +379,6 @@ let subst_arith_var replaced formula =
     | Arith t -> Arith (go_arith t)
     | Pred (x, f1) -> Pred (x, List.map go_arith f1) in
   go_formula formula
-
-let rec to_tree seq f b = match seq with
-  | [] -> b
-  | x::xs -> f x (to_tree xs f b)
-
 
 let to_id_ho_map_from_id_type_map id_type_map =
   Hflmc2_syntax.IdMap.fold
@@ -469,10 +464,11 @@ let encode_body_exists_formula_sub
       | None -> "Exists" ^ string_of_int i
       | Some p -> p ^ "_e" ^ string_of_int i in
     let ty =
-      to_tree
-        arg_vars
+      List.fold_right
         (fun x rem -> TyArrow (x, rem))
-        (TyBool ()) in
+        arg_vars
+        (TyBool ())
+    in
     { Id.name = name; ty = ty; id = i } in
   let body =
     let guessed_conditions = get_guessed_conditions coe1 coe2 guessed_terms in
@@ -487,13 +483,13 @@ let encode_body_exists_formula_sub
       ) in
     rev_abs (
       (formula_type_vars |> List.rev |> to_abs') @@
-        to_tree
-        (bound_vars)
-        (fun x rem -> Forall (x, rem)) @@
+        List.fold_right
+        (fun x rem -> Forall (x, rem)) bound_vars @@
           Or (
             formula_fold (fun acc f -> Or(acc, f)) approx_formulas,
             args_ids_to_apps arg_vars @@ (Var new_pvar)
-            )) in
+            ))
+  in
     body,
     [{ 
       Hflz.var = new_pvar;
@@ -640,12 +636,6 @@ let get_outer_mu_funcs (funcs : 'a hes_rule list) =
      |> print_endline; *)
   Env.create res
   
-let range n m =
-  let rec go i =
-    if i > m then []
-    else i::(go (i + 1)) in
-  go n
-
 let make_app new_fml rec_vars formula_type_terms guessed_conditions =
   let pres, dec, posts =
     List.fold_left
@@ -1006,7 +996,7 @@ let elim_mu_with_rec (entry, rules) coe1 coe2 lexico_pair_number id_type_map use
     List.map
       (fun (_, rec_tvar) ->
         let ids =
-          range 1 lexico_pair_number
+          Base.List.range 1 lexico_pair_number ~stop:`inclusive
           |> List.map (fun i ->
             if i = 1 then rec_tvar
             else Id.gen ~name:(rec_tvar.Id.name ^ "_" ^ string_of_int i) (Type.TyInt)
@@ -1130,9 +1120,9 @@ let encode_body_forall_formula_sub new_pred_name_cand hes_preds hfl =
       | Some p -> p ^ "_a" ^ string_of_int i in
     let ty =
       (* TODO: higher-order vars *)
-      to_tree
-        (arg_vars' @ bound_vars)
+      List.fold_right
         (fun x rem -> TyArrow (x, rem))
+        (arg_vars' @ bound_vars)
         (TyBool ())  in
     { Id.name = name; ty = ty; id = i } in
   let body =
