@@ -5,6 +5,8 @@ A full-HFLz solver
 ## Installation
 
 The solver can be built with docker.
+**The `Dockerfile` is currently unmaintained.** 
+If you want to try MuHFL please contact the maintainer.
 
 ```bash
 cd docker
