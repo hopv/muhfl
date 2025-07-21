@@ -3,7 +3,6 @@ module Arith    = Arith
 module Fixpoint = Fixpoint
 module Print    = Print
 module Formula  = Formula
-module Hfl      = Hfl
 module Hflz     = Hflz
 module Id       = Id
 module Type     = Type
