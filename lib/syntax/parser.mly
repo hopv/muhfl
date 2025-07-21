@@ -36,7 +36,7 @@ open Raw_hflz
 %nonassoc NEG
 
 %type <Raw_hflz.hes> hes
-%type <Raw_hflz.hes * (string * Type.abstraction_ty) list option> main
+%type <Raw_hflz.hes * (string * Type.simple_ty) list option> main
 %start main
 
 %%

@@ -15,7 +15,7 @@ module Trans    = Trans
 exception LexingError of string
 exception ParseError of string
 module Parser : sig
-  val main : Lexing.lexbuf -> Raw_hflz.hes * (string * Type.abstraction_ty) list
+  val main : Lexing.lexbuf -> Raw_hflz.hes * (string * Type.simple_ty) list
 end = struct
   module P = Parser
   module I = P.MenhirInterpreter
@@ -152,7 +152,7 @@ end = struct
     in
     let env = match menv with None -> [] | Some env -> env in
     let item ppf (x,ty) =
-      Print.pf ppf "@[<h>%s : %a@]" x Print.abstraction_ty ty
+      Print.pf ppf "@[<h>%s : %a@]" x Print.simple_ty ty
     in
     if false then Print.pr "@[<v>%a@]@."
       Print.(list item) env ;
