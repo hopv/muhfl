@@ -24,4 +24,4 @@ let command =
       (fun () -> main path1 path2)
     )
 
-let () = Command.run command
+let () = Command_unix.run command

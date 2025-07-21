@@ -440,7 +440,7 @@ let encode_body_exists_formula_sub
       |> List.map (fun arith_t ->
         let fvs = Hflz.fvs (Arith arith_t) in
         let bound_vars, not_bound_vars =
-          IdSet.partition_tf ~f:(fun id -> List.exists (fun bound_var -> Id.eq bound_var id) bound_vars) fvs in
+          Core.Set.partition_tf ~f:(fun id -> List.exists (fun bound_var -> Id.eq bound_var id) bound_vars) fvs in
         if IdSet.is_empty bound_vars then
           [arith_t]
         else
@@ -603,10 +603,10 @@ let get_outer_mu_funcs (funcs : 'a hes_rule list) =
   for i = 0 to funcs_count - 1 do
     let nids1 = Mygraph.reachable_nodes_from ~start_is_reachable_initially:false i g in
     let nids2 = Mygraph.reachable_nodes_from ~start_is_reachable_initially:false i rg in
-    Core.Set.Poly.inter
+    Core.Set.inter
       (Core.Set.Poly.of_list nids1)
       (Core.Set.Poly.of_list nids2)
-    |> Core.Set.Poly.to_list
+    |> Core.Set.to_list
     |> List.iter
       (fun nid ->
          Mygraph.add_edge nid i outer_nids

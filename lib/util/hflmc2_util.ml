@@ -1,4 +1,3 @@
-type process_status = Unix.process_status
 let partition = List.partition
 
 let generated_temp_files : string list ref = ref []
@@ -350,7 +349,7 @@ module Fn = struct
 
     type t_result = (unit, [ `Exit_non_zero of int | `Signal of Signal.t | `Timeout]) result
     
-    val async_command : float -> string -> string list -> Unix.Process_channels.t
+    val async_command : float -> string -> string list -> Core_unix.Process_channels.t
 
     val sync_command_full : float -> string -> string list -> string list -> (string -> unit) -> (string -> unit) -> t_result * string * string
     
@@ -385,14 +384,14 @@ module Fn = struct
     let unlines : string list -> string = String.concat ~sep:"\n"
 
     let async_command (timeout : float) (name : string) (arguments : string list) :
-      Unix.Process_channels.t =
+      Core_unix.Process_channels.t =
       (* use sigkill ? *)
-      Unix.open_process_full
+      Core_unix.open_process_full
         (Printf.sprintf "bash -c 'timeout %s %s %s'"
           (string_of_float timeout)
           name
           (String.concat ~sep:" " arguments))
-        ~env:(Unix.environment ())
+        ~env:(Core_unix.environment ())
 
     let pp_process_result fmt status out err =
       let show_status status = match status with
@@ -411,14 +410,14 @@ module Fn = struct
       output_lines input pcs.stdin;
       let out = unlines @@ input_lines pcs.stdout read_line_handler in
       let err = unlines @@ input_lines pcs.stderr read_err_line_handler in
-      let status = Unix.close_process_full pcs in
+      let status = Core_unix.close_process_full pcs in
       pp_process_result Format.std_formatter status out err;
       match status with
       | Ok () -> (Ok (), out, err)
       | Error (`Exit_non_zero 124) -> (Error (`Timeout), out, err)
       | Error (`Exit_non_zero c) -> (Error (`Exit_non_zero c), out, err)
       | Error (`Signal x) ->
-        if Signal.equal x Signal.int then raise Sys.Break else (Error (`Signal x), out, err)
+        if Signal.equal x Signal.int then raise Sys_unix.Break else (Error (`Signal x), out, err)
     
     let sync_command timeout name arguments input = sync_command_full timeout name arguments input print_endline (fun _ -> ())
     
@@ -531,14 +530,14 @@ let get_reporter header_format =
     let str = src_str <+ level_str +> header in
     Fmt.pf ppf header_format Fmt.(styled style string) str
   in
-  let zone = Lazy.force Core.Time_ns.Zone.local in
+  let zone = Lazy.force Time_ns_unix.Zone.local in
   let reporter =
     { Logs.report = fun src level ~over k msgf ->
         let k _ = over (); k () in
         msgf @@ fun ?header ?tags:_ fmt ->
           let ppf = Fmt.stdout in
-          let time = Core.Time.now () in
-          let s = Core.Time.format time "%Y-%m-%d %H:%M:%S" ~zone in
+          let time = Time_float_unix.now () in
+          let s = Time_float_unix.format time "%Y-%m-%d %H:%M:%S" ~zone in
           Format.kfprintf k ppf ("%s %a@[" ^^ fmt ^^ "@]@.")
             s pp_header (src, level, header)
     }
@@ -549,9 +548,9 @@ let project_root_directory =
   lazy (
     let error_messsage = "find_util_dune_project (replacer can be used only in muapprox directory)" in
     let dune_project = "dune-project" in
-    let cwd = Sys.getcwd() in
+    let cwd = Sys_unix.getcwd() in
     let rec find_util_dune_project dir =
-      match Sys.file_exists (dir ^ "/" ^ dune_project) with
+      match Sys_unix.file_exists (dir ^ "/" ^ dune_project) with
       | `Yes -> dir
       | `No ->
         if String.(=) (Filename.dirname dir) dir then failwith error_messsage
@@ -564,8 +563,8 @@ let time_store =
   String.Table.create ()
 
 let measure_time key mes =
-  let time = Unix.gettimeofday () in
-  String.Table.update
+  let time = Core_unix.gettimeofday () in
+    Hashtbl.update
     time_store
     key
     ~f:(fun v_opt ->

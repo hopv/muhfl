@@ -34,4 +34,4 @@ let command =
       (fun () -> main path max_expansion max_expansion_show shortcircuit try_values)
     )
 
-let () = Command.run command
+let () = Command_unix.run command
