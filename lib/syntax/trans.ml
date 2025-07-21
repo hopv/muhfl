@@ -130,7 +130,7 @@ module Subst = struct
     let rec rename_binding_if_necessary (env : IdSet.t) (phi : 'ty S.Hflz.t): 'ty S.Hflz.t =
       let open S in
       let rec subst_new_id x_arg phi =
-        match IdSet.find env ~f:((Id.eq)x_arg) with
+        match Set.find env ~f:((Id.eq)x_arg) with
           | Some _ -> begin
             let new_x = { x_arg with id = Id.gen_id () } in
             let new_x_term = (
@@ -165,7 +165,7 @@ module Subst = struct
       
     and hflz ?(callback) (env_ : 'ty S.Hflz.t env) (phi : 'ty S.Hflz.t) : 'ty S.Hflz.t =
       let fvs =
-        IdMap.fold
+        Map.fold
           env_
           ~init:(IdSet.empty)
           ~f:(fun ~key:_key ~data acc ->
@@ -188,7 +188,7 @@ module Subst = struct
         | App(phi1,phi2) ->
           App(hflz_ s_env b_env phi1, hflz_ s_env b_env phi2)
         | Abs(x, t)      -> begin
-          match IdSet.find ~f:(fun x' -> S.Id.eq x x') fvs with
+          match Set.find ~f:(fun x' -> S.Id.eq x x') fvs with
           | Some _ -> failwith @@ "Variable capture in substituion (" ^ S.Id.to_string x ^ ")"
           | None -> 
             Abs(x, hflz_ (IdMap.remove s_env x) (IdSet.add b_env x) t)

@@ -52,4 +52,4 @@ let command =
       (fun () -> main filepath no_optimization no_inlining show_style is_horsz agg)
     )
 
-let () = Command.run command
+let () = Command_unix.run command

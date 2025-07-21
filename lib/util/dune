@@ -6,7 +6,12 @@
    logs
    logs.fmt
    str
-   core)
+   core
+   core_unix
+   core_unix.time_ns_unix
+   core_unix.time_float_unix
+   core_unix.sys_unix
+ )
   (preprocess (pps ppx_inline_test ppx_expect)))
 
 (env (dev (flags (:standard -warn-error -a+31))))

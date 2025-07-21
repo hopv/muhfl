@@ -44,4 +44,4 @@ let command =
       (fun () -> main path debug simplified_type no_abbrev)
     )
 
-let () = Command.run command
+let () = Command_unix.run command

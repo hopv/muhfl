@@ -17,4 +17,4 @@ let command =
       (fun () -> main filepath show_forall)
     )
 
-let () = Command.run command
+let () = Command_unix.run command

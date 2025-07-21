@@ -69,4 +69,4 @@ let command =
       (fun () -> main file)
     )
 
-let () = Core.Command.run command
+let () = Command_unix.run command

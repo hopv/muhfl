@@ -64,4 +64,4 @@ let command =
       (fun () -> main filepath optimization agg show_style trivial_only_agg output_cp)
     )
 
-let () = Command.run command
+let () = Command_unix.run command

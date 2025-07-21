@@ -27,7 +27,7 @@ let main filepath show_style disable_optimization solve always_use_canonical_typ
   ignore @@ Muhfl.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:true true phi;
   print_endline @@ "saved: " ^ path2;
   if solve then begin
-    ignore @@ Unix.system @@ "dune exec ./bin/muapprox_main.exe -- --instantiate-exists \"" ^ path2 ^ "\""
+    ignore @@ Core_unix.system @@ "dune exec ./bin/muapprox_main.exe -- --instantiate-exists \"" ^ path2 ^ "\""
   end
   
 let read_show_style = 
@@ -54,4 +54,4 @@ let command =
       (fun () -> main filepath show_style disable_optimization solve always_use_canonical_type_env use_branching_time)
     )
 
-let () = Command.run command
+let () = Command_unix.run command

@@ -10,12 +10,11 @@
   (synopsis "A HFLZ solver")
   ; (description "A longer description")
   (depends
-          ocaml
+          (ocaml (and (>= 4.14) (< 5.0)))
           async
           cmdliner
-          core 
-          core_kernel
-          (core_unix (= v0.14.0))
+          (core (and (>= v0.16) (< v0.17))) ; core v.0.17 is supposed to be for Ocaml 5.0
+          (core_unix (and (>= v0.16) (< v0.17))) ; core v.0.17 is supposed to be for Ocaml 5.0
           fmt
           logs
           lwt
@@ -23,7 +22,7 @@
           menhirLib
           ppx_compare
           ppx_deriving
-          ppx_deriving_cmdliner
+          (ppx_deriving_cmdliner (= "dev"))
           ppx_let
           ppx_sexp_conv
           yojson

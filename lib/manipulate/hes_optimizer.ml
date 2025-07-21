@@ -377,7 +377,7 @@ let inline_bottom_sub hes =
   let inlined = ref false in
   let get_free_preds body =
     Hflz.fvs body
-    |> IdSet.filter ~f:(fun p -> Id.is_pred_name p.name) in
+    |> IdSet.filter ~f:(fun p -> Id.is_pred_name p.Id.name) in
   let rules = Hflz.merge_entry_rule hes in
   (* 自分のレベル以下のpredicateが出現しないpredicateを一番下のレベルに移動する *)
   let (_, (result_rec, result_low)) =
@@ -387,7 +387,7 @@ let inline_bottom_sub hes =
         let lower_preds = IdSet.add lower_preds var in
         let free_predicates = get_free_preds body in
         let (r1, r2) =
-          if IdSet.is_empty (IdSet.inter free_predicates lower_preds) then
+          if IdSet.is_empty (Core.Set.inter free_predicates lower_preds) then
             result_rec, (rule::result_low)
           else
             (rule::result_rec), result_low in
