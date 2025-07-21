@@ -5,7 +5,7 @@ maintainer: ["Ken Sakayori <sakayori@kb.is.s.u-tokyo.ac.jp"]
 homepage: "https://github.com/hopv/muhfl"
 bug-reports: "https://github.com/hopv/muhfl/issues"
 depends: [
-  "dune" {>= "3.0"}
+  "dune" {>= "3.19"}
   "ocaml" {>= "4.14" & < "5.0"}
   "async"
   "cmdliner"

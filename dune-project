@@ -1,7 +1,7 @@
-(lang dune 3.0)
+(lang dune 3.19)
 (name muhfl)
 (generate_opam_files)
-(using menhir 2.0)
+(using menhir 3.0)
 (source (github hopv/muhfl))
 (maintainers "Ken Sakayori <sakayori@kb.is.s.u-tokyo.ac.jp")
 
