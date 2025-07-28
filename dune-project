@@ -16,6 +16,7 @@
           (core (and (>= v0.16) (< v0.17))) ; core v.0.17 is supposed to be for Ocaml 5.0
           (core_unix (and (>= v0.16) (< v0.17))) ; core v.0.17 is supposed to be for Ocaml 5.0
           fmt
+          hfl
           logs
           lwt
           menhir

@@ -1,6 +1,7 @@
 (library
  (public_name muhfl)
  (libraries
+    hfl
     hflmc2_util
     hflmc2_syntax
     muhfl.muhfl_prover
