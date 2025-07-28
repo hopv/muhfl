@@ -1201,6 +1201,157 @@ let encode_body_forall_except_top (hes : Type.simple_ty Hflz.hes) =
   (entry, hes)
 
 
+(* Tests *)
+
+open Print
+module Util = Hflmc2_util
+
+
+let%expect_test "to_args" =
+  let open Type in
+  let res = to_args @@ TyArrow (id_n 1 TyInt, TyArrow (id_n 2 TyInt, TyArrow (id_n 3 (TySigma (TyBool ())), TyBool ()))) in
+  ignore [%expect.output];
+  Util.print_list (Id.show (fun fmt ty_ -> pp_simple_argty fmt ty_)) res;
+  [%expect {|
+    [ { Id.name = "x_3"; id = 3; ty = (Type.TySigma (Type.TyBool ())) };
+    { Id.name = "x_2"; id = 2; ty = Type.TyInt };
+    { Id.name = "x_1"; id = 1; ty = Type.TyInt } ] |}]
+
+let%expect_test "to_abs'" =
+  let res = to_abs' [
+    { Id.name = "x_3"; id = 3; ty = (Type.TySigma (Type.TyBool ())) };
+    { Id.name = "x_2"; id = 2; ty = Type.TyInt };
+    { Id.name = "x_1"; id = 1; ty = Type.TyInt } ] (Bool true) in
+  ignore [%expect.output];
+  print_endline @@ show_hflz_full res;
+  [%expect {|
+    (Hflz.Abs ({ Id.name = "x_3"; id = 3; ty = (Type.TySigma (Type.TyBool ())) },
+       (Hflz.Abs ({ Id.name = "x_2"; id = 2; ty = Type.TyInt },
+          (Hflz.Abs ({ Id.name = "x_1"; id = 1; ty = Type.TyInt },
+             (Hflz.Bool true)))
+          ))
+       )) |}]
+
+let%expect_test "to_forall" =
+  let res = to_forall [
+    { Id.name = "x_3"; id = 3; ty = (Type.TySigma (Type.TyBool ())) };
+    { Id.name = "x_2"; id = 2; ty = Type.TyInt };
+    { Id.name = "x_1"; id = 1; ty = Type.TyInt } ] (Bool true) in
+  ignore [%expect.output];
+  print_endline @@ show_hflz_full res;
+  [%expect {|
+    (Hflz.Forall (
+       { Id.name = "x_3"; id = 3; ty = (Type.TySigma (Type.TyBool ())) },
+       (Hflz.Forall ({ Id.name = "x_2"; id = 2; ty = Type.TyInt },
+          (Hflz.Forall ({ Id.name = "x_1"; id = 1; ty = Type.TyInt },
+             (Hflz.Bool true)))
+          ))
+       )) |}]
+
+let%expect_test "to_app" =
+  let seed = [1; 2; 3] in
+  let res =
+    to_app
+      (Bool false)
+      (List.map (fun i -> Arith(Var (id_n i `Int))) seed) in
+  ignore [%expect.output];
+  print_endline @@ show_hflz_full res;
+  [%expect {|
+    (Hflz.App (
+       (Hflz.App (
+          (Hflz.App ((Hflz.Bool false),
+             (Hflz.Arith (Arith.Var { Id.name = "x_1"; id = 1; ty = `Int })))),
+          (Hflz.Arith (Arith.Var { Id.name = "x_2"; id = 2; ty = `Int })))),
+       (Hflz.Arith (Arith.Var { Id.name = "x_3"; id = 3; ty = `Int })))) |}]
+
+(* TODO:  fix this broken test *)
+(*
+let%expect_test "make_guessed_terms" =
+  let res = get_guessed_terms 2 10 [id_n 1 `Int; id_n 2 `Int] in
+  ignore [%expect.output];
+  Util.print_list (fun r -> show_hflz (Arith r)) res;
+  [%expect {|
+    [ 2 * x_11 + 10;
+    (-2) * x_11 + 10;
+    2 * x_22 + 10;
+    (-2) * x_22 + 10 ] |}];
+  let res = make_guessed_terms 2 10 [] in
+  ignore [%expect.output];
+  Util.print_list (fun r -> show_hflz (Arith r)) res;
+  [%expect {|[ 10 ]|}]
+
+let%expect_test "make_guessed_terms_simple" =
+  let res = make_guessed_terms_simple 2 10 [id_n 1 `Int; id_n 2 `Int] in
+  ignore [%expect.output];
+  Util.print_list (fun r -> show_hflz (Arith r)) res;
+  [%expect {|
+    [ 10;
+    2 * x_11;
+    2 * x_22;
+    (-2) * x_11;
+    (-2) * x_22 ] |}];
+  let res = make_guessed_terms_simple 2 10 [] in
+  ignore [%expect.output];
+  Util.print_list (fun r -> show_hflz (Arith r)) res;
+  [%expect {|[ 10 ]|}]
+ *)
+
+let%expect_test "rev_abs" =
+  let res =
+    rev_abs
+      (Hflz.Abs ({ Id.name = "x_3"; id = 3; ty = (Type.TySigma (Type.TyBool ())) },
+        (Hflz.Abs ({ Id.name = "x_2"; id = 2; ty = Type.TyInt },
+          (Hflz.Abs ({ Id.name = "x_1"; id = 1; ty = Type.TyInt },
+              (Hflz.Bool true)))
+          ))
+        )) in
+  print_endline @@ show_hflz_full res;
+  [%expect {|
+    (Hflz.Abs ({ Id.name = "x_1"; id = 1; ty = Type.TyInt },
+       (Hflz.Abs ({ Id.name = "x_2"; id = 2; ty = Type.TyInt },
+          (Hflz.Abs (
+             { Id.name = "x_3"; id = 3; ty = (Type.TySigma (Type.TyBool ())) },
+             (Hflz.Bool true)))
+          ))
+       )) |}]
+
+let%expect_test "extract_abstraction" =
+  let open Type in
+  let open Arith in
+  let (f, rule) =
+    extract_abstraction
+      (Abs (id_n 1 (TyInt), Abs (id_n 2 (TySigma (TyBool ())),
+        App (Var (id_n 4 (TyArrow (id_n 5 TyInt, TyBool ()))), Arith (Op (Add, [Var (id_n 1 `Int); Op (Mult, [Var (id_n 2 `Int); Var (id_n 3 `Int)])])))
+      )))
+      [(id_n 4 (TyArrow (id_n 5 TyInt, TyBool ())))]
+      "a" in
+  ignore [%expect.output];
+  print_endline @@ show_hflz f;
+  print_endline @@ Util.fmt_string (Print_syntax.hflz_hes_rule Print_syntax.simple_ty_) rule;
+  [%expect {|
+    a_sub12 x_33
+    a_sub12 =ν λx_33:int.λx_11:int.λx_22:bool.x_44 (x_11 + x_22 * x_33). |}]
+
+
+let%expect_test "in_forall" =
+  let open Type in
+  let v =
+    in_forall
+      (Forall (id_n 3 TyInt, Forall (id_n 4 (TySigma (TyBool ())), Abs (id_n 1 (TyInt), Abs (id_n 2 (TySigma (TyBool ())), Bool true))))) in
+  ignore [%expect.output];
+  print_endline @@ show_hflz_full v;
+  [%expect {|
+    (Hflz.Abs ({ Id.name = "x_1"; id = 1; ty = Type.TyInt },
+       (Hflz.Abs (
+          { Id.name = "x_2"; id = 2; ty = (Type.TySigma (Type.TyBool ())) },
+          (Hflz.Forall ({ Id.name = "x_3"; id = 3; ty = Type.TyInt },
+             (Hflz.Forall (
+                { Id.name = "x_4"; id = 4; ty = (Type.TySigma (Type.TyBool ())) },
+                (Hflz.Bool true)))
+             ))
+          ))
+       )) |}]
+
 let%expect_test "encode_body_forall_formula_sub" =
   let open Type in
   let p = id_n 10 (TySigma (TyArrow (id_n 12 TyInt, (TyArrow (id_n 11 TyInt, TyBool ()))))) in
@@ -1248,13 +1399,13 @@ let%expect_test "encode_body_forall_formula_sub" =
   print_endline @@ "replaced: " ^ show_hflz replaced;
   [%expect {|
     1
-    replaced: Forall1 x_33 x_44 x_55 0 0  |}];
+    replaced: Forall3 x_33 x_44 x_55 0 0  |}];
   print_endline @@ "fix: " ^ Fixpoint.show rule.fix;
   print_endline @@ "var: " ^ Id.show pp_simple_ty rule.var;
   print_endline @@ "rule: " ^ show_hflz rule.body;
   [%expect {|
     fix: Fixpoint.Greatest
-    var: { Id.name = "Forall1"; id = 1;
+    var: { Id.name = "Forall3"; id = 3;
       ty =
       (Type.TyArrow ({ Id.name = "x_3"; id = 3; ty = Type.TyInt },
          (Type.TyArrow (
@@ -1283,10 +1434,10 @@ let%expect_test "encode_body_forall_formula_sub" =
            λx_22:(int -> bool).
             x_1010 (x_11 + x_33) x_300300 && x_22 x_55 && x_44 x_100100)
           1 (λx_4141:int.x_4141 = 2)
-         && Forall1 x_33 x_44 x_55 (x_100100 + 1) x_300300
-            && Forall1 x_33 x_44 x_55 (x_100100 - 1) x_300300
-            && Forall1 x_33 x_44 x_55 x_100100 (x_300300 + 1)
-               && Forall1 x_33 x_44 x_55 x_100100 (x_300300 - 1)|}];
+         && Forall3 x_33 x_44 x_55 (x_100100 + 1) x_300300
+            && Forall3 x_33 x_44 x_55 (x_100100 - 1) x_300300
+            && Forall3 x_33 x_44 x_55 x_100100 (x_300300 + 1)
+               && Forall3 x_33 x_44 x_55 x_100100 (x_300300 - 1)|}];
   (* check well-typedness *)
   let rules = [
     {
