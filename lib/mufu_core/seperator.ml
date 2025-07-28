@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 module H = Raw_hflz 
 
 let get_preds =

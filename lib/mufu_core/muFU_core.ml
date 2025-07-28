@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 open Transformer
    
 module H = Raw_hflz

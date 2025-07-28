@@ -14,9 +14,13 @@ open Z3.Arithmetic.Integer
 open Z3.Arithmetic.Real
 open Z3.BitVector
 
-open Hflmc2_syntax
+open Hfl
    
-module H = Raw_hflz
+module H = struct
+  include Raw_hflz
+  let mk_and e1 e2 = mk_ands [e1; e2]
+end
+
 module P = Printer
 
 exception TestFailException of string
