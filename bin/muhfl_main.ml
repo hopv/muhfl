@@ -1,6 +1,6 @@
 let () =
   let file =
-    match Muhfl.Options.parse() with
+    match Muhfl__Options.parse() with
     | Some (`File file) -> file
     | Some `Stdin ->
         let tmp_file = Filename.temp_file "stdin-" ".in" in

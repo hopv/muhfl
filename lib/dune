@@ -2,13 +2,14 @@
  (public_name muhfl)
  (libraries
     hflmc2_util
-    hflmc2_options
     hflmc2_syntax
     ltl_program
     branching_time_program
     muhfl.muhfl_prover
     muFU_core
     )
-  (flags (-cclib -lstdc++)))
+  (flags (-cclib -lstdc++))
+ (preprocess (pps ppx_deriving.std ppx_deriving_cmdliner))
+)
 
 (env (dev (flags (:standard -warn-error -a+31))))

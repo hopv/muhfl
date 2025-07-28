@@ -1,6 +1,5 @@
 module Util        = Hflmc2_util
 module Syntax      = Hflmc2_syntax
-module Options     = Hflmc2_options
 module Manipulate  = Manipulate
 module Ltl_print_syntax = Ltl_program.Print_syntax
 
