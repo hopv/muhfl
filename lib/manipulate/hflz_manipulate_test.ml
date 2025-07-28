@@ -67,12 +67,12 @@ let%expect_test "beta" =
       let () =
         let phi_all = Trans.Reduce.Hflz.beta phi_all_original in
         print_endline @@ "After (Trans.Reduce.Hflz.beta): " ^ show_hflz phi_all;
-        [%expect {| After (Trans.Reduce.Hflz.beta): λx_22:bool.(λx_26:bool.x_26) && x_22 |}] in
+        [%expect {| After (Trans.Reduce.Hflz.beta): λx_22:bool.(λx_27:bool.x_27) && x_22 |}] in
       
       let () =
         let _, phi_all = Hflz_util.beta IdMap.empty phi_all_original in
         print_endline @@ "After (Hflz_util.beta): " ^ show_hflz phi_all;
-        [%expect {| After (Hflz_util.beta): λx_22:bool.(λx_27:bool.x_27) && x_22 |}] in
+        [%expect {| After (Hflz_util.beta): λx_22:bool.(λx_28:bool.x_28) && x_22 |}] in
       () 
   in
   print_endline "";
@@ -118,8 +118,6 @@ let%expect_test "beta" =
     in
   ()
 
-(* 
-(* to run this test code, temporaliry delete hflz_manipulate.mli *)
 open Hflz_typecheck
 open Hflz
 open Hflz_manipulate
@@ -134,10 +132,10 @@ let%expect_test "desugar_formula" =
     And (Bool true, Not (And (Bool true, Forall (id_n 2 TyInt, Or (Pred (Ge, [Int 1; Var (id_n 2 `Int)]), Exists (id_n 3 TyInt, Not (And (Bool true, App (Var (id_n 4 (TyBool ())), Arith (Int 5)))))))))) in
   let desugar = Hflz.desugar_formula sugar in
   ignore [%expect.output];
-  print_endline @@ show_hflz desugar;
+  print_endline @@ Print_syntax.show_hflz desugar;
   [%expect {| true && (false || (∃x_22.1 < x_22 && (∀x_33.true && x_44 5))) |}]
 
-
+(*
 let%expect_test "to_args" =
   let open Type in
   let res = to_args @@ TyArrow (id_n 1 TyInt, TyArrow (id_n 2 TyInt, TyArrow (id_n 3 (TySigma (TyBool ())), TyBool ()))) in

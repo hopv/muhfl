@@ -211,25 +211,6 @@ let simple_ty : Type.simple_ty Fmt.t = simple_ty_ Prec.zero
 let simple_argty_ : Prec.t -> Type.simple_ty Type.arg Fmt.t = argty_ simple_ty_
 let simple_argty : Type.simple_ty Type.arg Fmt.t = simple_argty_ Prec.zero
 
-let abstraction_ty : Type.abstraction_ty Fmt.t =
-  let annot ppf fs =
-    Fmt.pf ppf "[%a]"
-      (Fmt.list ~sep:semicolon formula) fs
-  in ty annot
-let abstraction_argty  : Type.abstraction_argty Fmt.t =
-  argty abstraction_ty
-
-
-let rec abstracted_ty_ : Prec.t -> Type.abstracted_ty Fmt.t =
-  fun prec ppf aty -> match aty with
-    | ATyBool ->
-        Fmt.string ppf "bool"
-    | ATyArrow(arg,ret) ->
-        show_paren (prec > Prec.arrow) ppf "%a ->@ %a"
-          (abstracted_ty_ Prec.(succ arrow)) arg
-          (abstracted_ty_ Prec.arrow) ret
-let abstracted_ty : Type.abstracted_ty Fmt.t = abstracted_ty_ Prec.zero
-let abstracted_argty : Type.abstracted_argty Fmt.t = abstracted_ty
 
 (* Fixpoint *)
 
@@ -237,56 +218,6 @@ let fixpoint : Fixpoint.t Fmt.t =
   fun ppf t -> match t with
     | Least    -> Fmt.string ppf "μ"
     | Greatest -> Fmt.string ppf "ν"
-
-(* Hfl *)
-
-
-let rec hfl_ prec ppf (phi : Hfl.t) = match phi with
-  | Bool true ->
-      Fmt.string ppf "true"
-  | Bool false ->
-      Fmt.string ppf "false"
-  | Var x ->
-      id ppf x
-  | Or (phis, `Inserted) ->
-      let sep ppf () = Fmt.pf ppf "@ ||' " in
-      show_paren (prec > Prec.or_) ppf "@[<hv 0>%a@]"
-        (list ~sep (hfl_ Prec.or_)) phis
-  | And (phis, `Inserted) ->
-      let sep ppf () = Fmt.pf ppf "@ &&' " in
-      show_paren (prec > Prec.and_) ppf "@[<hv 0>%a@]"
-        (list ~sep (hfl_ Prec.and_)) phis
-  | Or (phis, `Original) ->
-      let sep ppf () = Fmt.pf ppf "@ || " in
-      show_paren (prec > Prec.or_) ppf "@[<hv 0>%a@]"
-        (list ~sep (hfl_ Prec.or_)) phis
-  | And (phis, `Original) ->
-      let sep ppf () = Fmt.pf ppf "@ && " in
-      show_paren (prec > Prec.and_) ppf "@[<hv 0>%a@]"
-        (list ~sep (hfl_ Prec.and_)) phis
-  | Abs (x, psi) ->
-      show_paren (prec > Prec.abs) ppf "@[<1>λ%a:%a.@,%a@]"
-        id x
-        (abstracted_ty_ Prec.(succ arrow)) x.ty
-        (hfl_ Prec.abs) psi
-  | App (psi1, psi2) ->
-      show_paren (prec > Prec.app) ppf "@[<1>%a@ %a@]"
-        (hfl_ Prec.app) psi1
-        (hfl_ Prec.(succ app)) psi2
-let hfl : Hfl.t Fmt.t = hfl_ Prec.zero
-
-let hfl_hes_rule : Hfl.hes_rule Fmt.t =
-  fun ppf rule ->
-    Fmt.pf ppf "@[<2>%s : %a =%a@ %a@]"
-      (Id.to_string rule.var)
-      abstracted_ty rule.var.ty
-      fixpoint rule.fix
-      hfl rule.body
-
-let hfl_hes : Hfl.hes Fmt.t =
-  fun ppf hes ->
-    Fmt.pf ppf "@[<v>%a@]"
-      (Fmt.list hfl_hes_rule) hes
 
 (* Hflz *)
 

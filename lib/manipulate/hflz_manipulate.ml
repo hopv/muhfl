@@ -1248,13 +1248,13 @@ let%expect_test "encode_body_forall_formula_sub" =
   print_endline @@ "replaced: " ^ show_hflz replaced;
   [%expect {|
     1
-    replaced: Forall0 x_33 x_44 x_55 0 0  |}];
+    replaced: Forall1 x_33 x_44 x_55 0 0  |}];
   print_endline @@ "fix: " ^ Fixpoint.show rule.fix;
   print_endline @@ "var: " ^ Id.show pp_simple_ty rule.var;
   print_endline @@ "rule: " ^ show_hflz rule.body;
   [%expect {|
     fix: Fixpoint.Greatest
-    var: { Id.name = "Forall0"; id = 0;
+    var: { Id.name = "Forall1"; id = 1;
       ty =
       (Type.TyArrow ({ Id.name = "x_3"; id = 3; ty = Type.TyInt },
          (Type.TyArrow (
@@ -1283,10 +1283,10 @@ let%expect_test "encode_body_forall_formula_sub" =
            λx_22:(int -> bool).
             x_1010 (x_11 + x_33) x_300300 && x_22 x_55 && x_44 x_100100)
           1 (λx_4141:int.x_4141 = 2)
-         && Forall0 x_33 x_44 x_55 (x_100100 + 1) x_300300
-            && Forall0 x_33 x_44 x_55 (x_100100 - 1) x_300300
-            && Forall0 x_33 x_44 x_55 x_100100 (x_300300 + 1)
-               && Forall0 x_33 x_44 x_55 x_100100 (x_300300 - 1)|}];
+         && Forall1 x_33 x_44 x_55 (x_100100 + 1) x_300300
+            && Forall1 x_33 x_44 x_55 (x_100100 - 1) x_300300
+            && Forall1 x_33 x_44 x_55 x_100100 (x_300300 + 1)
+               && Forall1 x_33 x_44 x_55 x_100100 (x_300300 - 1)|}];
   (* check well-typedness *)
   let rules = [
     {

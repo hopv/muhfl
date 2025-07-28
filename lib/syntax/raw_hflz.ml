@@ -494,25 +494,6 @@ let rename_simple_ty_rule
     let sty' = mk_arrows ty_vars' (TyBool()) in
     { rule with var = { rule.var with ty = sty' } }
 
-let rec rename_abstraction_ty
-      : ?env:[`Int] Id.t IdMap.t
-     -> simple_ty
-     -> abstraction_ty
-     -> abstraction_ty =
-  fun ?(env=IdMap.empty) orig aty -> match orig, aty with
-    | TyBool(), TyBool fs ->
-        TyBool(List.map ~f:(Trans.Subst.Id.formula env) fs)
-    | TyArrow({ty=TyInt;_} as x , ret_sty),
-      TyArrow({ty=TyInt;_} as x', ret_aty) ->
-        let env = IdMap.replace env x' {x with ty=`Int} in
-        TyArrow({x with ty=TyInt}, rename_abstraction_ty ~env ret_sty ret_aty)
-    | TyArrow({ty=TySigma arg_sty;_} as x , ret_sty),
-      TyArrow({ty=TySigma arg_aty;_}, ret_aty) ->
-        let ty = TySigma(rename_abstraction_ty ~env arg_sty arg_aty) in
-        TyArrow({x with ty}, rename_abstraction_ty ~env ret_sty ret_aty)
-    | _ ->
-        invalid_arg "Raw_hflz.rename_abstraction_ty: Simple type mismatch"
-
 let rename_ty_body : simple_ty Hflz.Sugar.hes -> simple_ty Hflz.Sugar.hes =
   fun hes ->
     let rec term : simple_ty IdMap.t -> simple_ty Hflz.Sugar.t -> simple_ty Hflz.Sugar.t =
@@ -572,8 +553,8 @@ let to_typed (raw_hes, env) =
       let v = rule.var in
       let aty =
         match List.Assoc.find ~equal:String.equal env v.name with
-        | Some aty -> rename_abstraction_ty v.ty aty
         | None -> map_ty (fun () -> []) v.ty
+        | Some aty -> failwith "Error occured during type inference.\n There shouldn't be any abstract type.\n"
       in rule.var, aty
     end
   in
