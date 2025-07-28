@@ -1,7 +1,7 @@
 module Print = Print_syntax
-module Fixpoint = Hflmc2_syntax.Fixpoint
-module Formula = Hflmc2_syntax.Formula
-module IdSet = Hflmc2_syntax.IdSet
+module Fixpoint = Hfl.Fixpoint
+module Formula = Hfl.Formula
+module IdSet = Hfl.IdSet
 
 open Hflz_typecheck
 open Hflz
@@ -28,7 +28,7 @@ let eliminate_exists_by_assinging_hflz max_assign_value phi =
           List.map
             (fun (phi, acc) -> 
               (* (substitute x value) *)
-              (Hflmc2_syntax.Trans.Subst.Hflz.hflz (Hflmc2_syntax.IdMap.of_list [x, Arith (Int value)])) phi,
+              (Hfl.Trans.Subst.Hflz.hflz (Hfl.IdMap.of_list [x, Arith (Int value)])) phi,
               (Id.remove_ty x, value)::acc
             )
             results
@@ -55,7 +55,7 @@ let eliminate_exists_by_assinging_hflz max_assign_value phi =
   go phi
 
 let eliminate_exists_by_assinging max_assign_value (hes : Type.simple_ty Hflz.hes) =
-  let rules = merge_entry_rule hes in
+  let rules = Hflz_util.merge_entry_rule hes in
   let ruless =
     List.map
       (fun rule ->
@@ -76,4 +76,4 @@ let eliminate_exists_by_assinging max_assign_value (hes : Type.simple_ty Hflz.he
     ruless
   |> List.map (fun rules -> List.rev rules)
   |> List.map (fun rules -> List.split rules)
-  |> List.map (fun (rules, acc) -> decompose_entry_rule rules, List.flatten acc)
+  |> List.map (fun (rules, acc) -> Hflz_util.decompose_entry_rule rules, List.flatten acc)

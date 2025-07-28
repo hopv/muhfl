@@ -1,42 +1,36 @@
-open Hflmc2_syntax
+open Hfl
 
 val get_dual_hes :
-  Hflmc2_syntax.Type.simple_ty Hflz.hes ->
-  Hflmc2_syntax.Type.simple_ty Hflz.hes
+  Type.simple_ty Hflz.hes ->
+  Type.simple_ty Hflz.hes
 
 val encode_body_forall_except_top :
-  Hflmc2_syntax.Type.simple_ty Hflz.hes ->
-  Hflmc2_syntax.Type.simple_ty Hflz.t *
-  Hflmc2_syntax.Type.simple_ty Hflz.hes_rule list
+  Type.simple_ty Hflz.hes ->
+  Type.simple_ty Hflz.hes
 
 val decompose_lambdas_hes :
-  Hflmc2_syntax.Type.simple_ty Hflz.t *
-  Hflmc2_syntax.Type.simple_ty Hflz.hes_rule list ->
-  Hflmc2_syntax.Type.simple_ty Hflz.t *
-  Hflmc2_syntax.Type.simple_ty Hflz.hes_rule list
+  Type.simple_ty Hflz.hes ->
+  Type.simple_ty Hflz.hes
 
 val encode_body_exists :
   int ->
   int ->
-  Hflmc2_syntax.Type.simple_ty Hflz.hes ->
-  Hflz_util.variable_type Hflmc2_syntax.IdMap.t ->
-  (unit Id.t * [ `Int ] Id.t) list ->
+  Type.simple_ty Hflz.hes ->
+  Hflz_util.variable_type IdMap.t ->
+  (unit Id.t * [`Int] Id.t) list ->
   bool ->
-  Hflmc2_syntax.Type.simple_ty Hflz.t *
-  Hflmc2_syntax.Type.simple_ty Hflz.hes_rule list
+  Type.simple_ty Hflz.hes
 
 val elim_mu_with_rec :
-  Hflmc2_syntax.Type.simple_ty Hflz.t *
-  Hflmc2_syntax.Type.simple_ty Hflz.hes_rule list ->
+  Type.simple_ty Hflz.hes ->
   int ->
   int ->
   int ->
-  Hflz_util.variable_type Hflmc2_syntax.IdMap.t ->
+  Hflz_util.variable_type IdMap.t ->
   bool ->
-  (unit Id.t * [ `Int ] Id.t) list ->
+  (unit Id.t * [`Int] Id.t) list ->
   string ->
-  Hflmc2_syntax.Type.simple_ty Hflz.t *
-  Hflmc2_syntax.Type.simple_ty Hflz.hes_rule list
+  Type.simple_ty Hflz.hes
 
 (* flag *)
 val simplify_bound : bool ref

@@ -3,7 +3,7 @@ let%expect_test "beta" =
   let open Hflz_typecheck in
   let open Hflz in
   let open Type in
-  let open Hflmc2_syntax in
+  let open Hfl in
   let open Print_syntax in
   ignore @@ Id.gen_id () + Id.gen_id () + Id.gen_id () + Id.gen_id () + Id.gen_id () + Id.gen_id ();
   (* print_endline @@ string_of_int @@ Id.gen_id (); *)
@@ -125,6 +125,7 @@ module Util = Hflmc2_util
 
 let%expect_test "desugar_formula" =
   let open Type in
+  let id_n n t = { Id.name = "x_" ^ string_of_int n; id = n; ty = t } in
   let sugar : simple_ty Hflz.Sugar.t =
     (* true && (not (true && ∀x2. 1 >= x2 || ∃x3. not (true && x4 5))) *)
     (* => *)

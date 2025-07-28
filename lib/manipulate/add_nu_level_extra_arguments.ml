@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 module Env = Env_no_value
 (* open Add_arguments_definition *)
 module ADef2 = Add_arguments_definition
@@ -100,7 +100,7 @@ let add_extra_arguments body =
   go body
 
 let run (hes : 'a Hflz.hes) with_partial_analysis no_temp_files =
-  let original_rules = Hflz.merge_entry_rule hes in
+  let original_rules = Hflz_util.merge_entry_rule hes in
   let module PA = Add_arguments_infer_partial_application in
   
   let rules =
@@ -142,6 +142,6 @@ let run (hes : 'a Hflz.hes) with_partial_analysis no_temp_files =
       Add_arguments_tuple.check_thflz2_type rules;
       in
   let rules = Add_arguments_tuple.to_hes rules in
-  let hes = Hflz.decompose_entry_rule rules in
+  let hes = Hflz_util.decompose_entry_rule rules in
   Hflz_typecheck.type_check hes;
   hes

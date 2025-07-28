@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 open Hflz
 
 let log_src = Logs.Src.create "Optimizer"
@@ -212,7 +212,7 @@ let run_sub z3_path phi =
   go [] phi
 
 let run z3_path hes =
-  let rules = merge_entry_rule hes in
+  let rules = Hflz_util.merge_entry_rule hes in
   print_endline "[Before] Simplifed if conditions:";
   print_endline @@ Print_syntax.show_hes ~readable:true rules;
   let rules =
@@ -224,4 +224,4 @@ let run z3_path hes =
       rules in
   print_endline "[After] Simplifed if conditions:";
   print_endline @@ Print_syntax.show_hes ~readable:true rules;
-  decompose_entry_rule rules
+  Hflz_util.decompose_entry_rule rules

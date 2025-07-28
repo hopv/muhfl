@@ -1,7 +1,14 @@
-open Hflmc2_syntax
+open Hfl
 module Env = Env_no_value
 
 open Add_arguments_tuple
+
+(* TODO: This should go into the library or a util file *)
+let is_pred_name pvar_name =
+  Stdlib.String.length pvar_name >= 0 &&
+  Stdlib.String.sub pvar_name 0 1 <> "_" && (Stdlib.String.uppercase_ascii @@ Stdlib.String.sub pvar_name 0 1) = Stdlib.String.sub pvar_name 0 1
+
+
 
 let generate_type_equal_constraint ty1 ty2 =
   let rec go ty1 ty2 =
@@ -81,7 +88,7 @@ let get_global_env {var_in_out; body; _} outer_mu_funcs global_env do_not_use_in
   let current_outer_pvars = lookup var_in_out outer_mu_funcs in
   let global_preds =
     get_free_variables body
-    |> List.filter (fun v -> Id.is_pred_name v.Id.name)
+    |> List.filter (fun v -> is_pred_name v.Id.name)
     |> Hflmc2_util.remove_duplicates Id.eq in
   global_preds
   |> List.map (fun pvar ->

@@ -4,6 +4,7 @@
  (inline_tests)
  (libraries
    str
+   hfl
    hflmc2_syntax
    hflmc2_util
    menhirLib)

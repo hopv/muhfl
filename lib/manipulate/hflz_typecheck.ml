@@ -1,7 +1,29 @@
-module Hflz = Hflmc2_syntax.Hflz
-module Id = Hflmc2_syntax.Id
-module Type = Hflmc2_syntax.Type
-module Arith = Hflmc2_syntax.Arith
+module Hflz = Hfl.Hflz
+module Id = Hfl.Id
+
+(* TODO clean this up *)
+module Type =
+struct
+  include Hfl.Type
+  let eq_modulo_arg_ids : simple_ty -> simple_ty -> bool =
+  let rec go = fun ty1 ty2 -> match ty1, ty2 with
+  | TyBool _, TyBool _ -> true
+  | TyArrow ({ty=ty1;_}, body1), TyArrow({ty=ty2;_}, body2) -> begin
+    let tyf =
+      match ty1, ty2 with
+      | TySigma ty1', TySigma ty2' ->
+        go ty1' ty2'
+      | TyInt, TyInt -> true
+      | _ -> false in
+    tyf && go body1 body2
+  end
+  | _ -> false in
+  go
+end
+
+
+
+module Arith = Hfl.Arith
 open Hflz
 
 type ty_env = (Type.simple_ty Type.arg Id.t) list
@@ -52,7 +74,8 @@ let ensure_all_variable_ids_are_unique_expr env seen_ids (phi : 'a Hflz.t) =
 
 let ensure_all_variable_ids_are_unique (hes : 'a hes) =
   let seen_ids = Hashtbl.create 100 in
-  let (entry, rules) = hes in
+  let entry = top_formula_of hes in
+  let rules = equations_of hes in
   let env =
     List.map
       (fun {var; _} ->
@@ -91,7 +114,7 @@ let type_check_arith : ty_env -> Arith.t -> bool = fun env arith ->
 let get_hflz_type : ty_env -> Type.simple_ty Hflz.t -> Type.simple_ty = fun env hfl ->
   let show_arg_ty = fun fmt ty -> Format.pp_print_string fmt @@ Type.show_ty Fmt.nop ty in
   let show_arg = Type.show_arg show_arg_ty in
-  let show_arg_ty_s = fun ty -> Hflmc2_util.fmt_string Hflmc2_syntax.Print.simple_argty ~margin:200 ty in
+  let show_arg_ty_s = fun ty -> Hflmc2_util.fmt_string Hfl.Print.simple_argty ~margin:200 ty in
   let show_id = Id.show Fmt.nop in
   let show_formula f = 
     let buf = Buffer.create 100 in
@@ -118,7 +141,7 @@ let get_hflz_type : ty_env -> Type.simple_ty Hflz.t -> Type.simple_ty = fun env 
           "type of variable in formula:\n" ^
           Hflmc2_util.fmt_string Print_syntax.simple_ty ty ^
           " / type in environment:\n" ^
-          Hflmc2_util.fmt_string (Hflmc2_syntax.Print.argty Print_syntax.simple_ty) ty' ^
+          Hflmc2_util.fmt_string (Hfl.Print.argty Print_syntax.simple_ty) ty' ^
           ") (type of variable in formula: " ^ (show_arg @@ Type.TySigma ty) ^
           " / type in environment: " ^ (show_arg ty')  ^ ")"
     | None -> failwith @@ "Var: unbound variable (" ^ (show_id v) ^ ")"
@@ -181,7 +204,8 @@ let get_duplicates cmp ls =
 
 let set_variable_ty (hes : Type.simple_ty hes) : Type.simple_ty hes =
   let show_id = Id.show Fmt.nop in
-  let (entry, rules) = hes in
+  let entry = top_formula_of hes in
+  let rules = equations_of hes in
   let env = List.map (fun {var;_} -> var) rules in
   let rec go env phi = match phi with
     | Var v -> begin
@@ -223,7 +247,7 @@ let set_variable_ty (hes : Type.simple_ty hes) : Type.simple_ty hes =
         {var; body; fix}
       )
       rules in
-  (entry, rules)
+  mk_hes entry rules
 
 let type_check (hes : Type.simple_ty hes) : unit =
   let path = Print_syntax.MachineReadable.save_hes_to_file true hes in
@@ -231,7 +255,8 @@ let type_check (hes : Type.simple_ty hes) : unit =
   (* let path = Print_syntax.FptProverHes.save_hes_to_file hes in
   log_string @@ "Not checked HES path (.hes): " ^ path; *)
   let show_ty = Type.show_ty Fmt.nop in
-  let (entry, rules) = hes in
+  let entry = top_formula_of hes in
+  let rules = equations_of hes in
   let env = List.map (fun {var={ty;_} as var;_} -> {var with ty=Type.TySigma ty}) rules in
   let () =
     let pred_count = get_duplicates (fun a b -> a.Id.name = b.Id.name) env in
@@ -297,7 +322,8 @@ let ensure_no_shadowing_expr (env : ty_env) (phi : 'a Hflz.t) : 'a Type.arg Id.t
 
 (* shadowning is normally harmless *)
 let ensure_no_shadowing (hes : Type.simple_ty hes) : unit =
-  let (entry, rules) = hes in
+  let entry = top_formula_of hes in
+  let rules = equations_of hes in
   let env = List.map (fun {var={ty;_} as var;_} -> {var with ty=Type.TySigma ty}) rules in
   let () =
     let pred_count = get_duplicates (fun a b -> a.Id.name = b.Id.name) env in

@@ -1,9 +1,9 @@
 module Print = Print_syntax
-module Fixpoint = Hflmc2_syntax.Fixpoint
-module Formula = Hflmc2_syntax.Formula
+module Fixpoint = Hfl.Fixpoint
+module Formula = Hfl.Formula
 
 open Hflz_typecheck
-open Hflz
+open Hfl.Hflz
 
 let tmp_var_name = "k"
 
@@ -85,14 +85,14 @@ let convert hes =
       (fun {var; body; fix} ->
         let _, body =
           convert_formula env body
-          |> (Hflz_util.beta Hflmc2_syntax.IdMap.empty) in
+          |> (Hflz_util.beta Hfl.IdMap.empty) in
         {var; body; fix}
       )
       rules
   in
   let _, entry =
     convert_formula env entry
-    |> (Hflz_util.beta Hflmc2_syntax.IdMap.empty) in
-  let hes = (App (entry, Bool false), rules) in
+    |> (Hflz_util.beta Hfl.IdMap.empty) in
+  let hes = mk_hes (App (entry, Bool false)) rules in
   type_check hes;
   hes

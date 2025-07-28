@@ -1,9 +1,32 @@
-open Hflmc2_syntax
+open Hfl
 
+(* TODO clean this up *)
 module M = struct
   let init = IdMap.singleton
-  let merge = IdMap.merge'
-  let merge_either = IdMap.merge'_either
+  let merge_either =
+      fun m1 m2 ->
+        let dup = ref None in
+        try
+          Core.First
+            (Core.Map.merge m1 m2
+              ~f:begin fun ~key -> function
+              | `Left x -> Some x
+              | `Right x -> Some x
+              | `Both (l, r) ->
+                  dup := Some (key, l, r);
+                  invalid_arg ""
+              end)
+        with Invalid_argument _ -> begin
+          match !dup with
+          | Some (key, l, r) -> Second (key, l, r)
+          | None -> assert false
+        end
+
+  let merge  =
+      fun m1 m2 ->
+        match merge_either m1 m2 with
+        | First r -> r
+        | Second (key, _, _) -> invalid_arg @@ "merge: " ^ Core.string_of_sexp (Id.sexp_of_t Core.sexp_of_unit key)
   let rec merges = function
     | [] -> failwith "merges"
     | [x] -> x
@@ -14,7 +37,7 @@ module M = struct
   let remove = IdMap.remove
   let map = IdMap.map
   let empty = IdMap.empty
-  let to_list x = IdMap.fold x ~init:[] ~f:(fun ~key:k ~data:v acc -> (k, v)::acc)  |> List.rev
+  let to_list x = Base.Map.fold x ~init:[] ~f:(fun ~key:k ~data:v acc -> (k, v)::acc)  |> List.rev
 end
 
 let save_to_file file text =
@@ -56,7 +79,7 @@ type s_thes_rules = Type.simple_ty thes_rules
 [@@deriving eq,ord,show  { with_path = false }]
 
 module Print_temp = struct
-  open Hflmc2_syntax.Print
+  open Hfl.Print
     
   let pid : Stdlib.Format.formatter -> int -> unit = fun fmt _i ->
     (* Fmt.pf fmt "<%d>" i *)
@@ -177,7 +200,7 @@ end
 let abbrev_variable_names (hes : Type.simple_ty Hflz.hes): Type.simple_ty Hflz.hes =
   (* let initial_id = Id.gen_id () in *)
   let initial_id = 0 in
-  let hes = Hflz.merge_entry_rule hes in
+  let hes = Hflz_util.merge_entry_rule hes in
   (* let hes, _ = assign_unique_variable_id hes in *)
   let abbrev_name name =
     match String.index_opt name '_' with
@@ -211,9 +234,9 @@ let abbrev_variable_names (hes : Type.simple_ty Hflz.hes): Type.simple_ty Hflz.h
   ) hes
   |> (fun xs ->
     let h = List.hd xs in
-    let h = { h with var = { h.var with name = Hflz.dummy_entry_name } } in
+    let h = { h with var = { h.var with name = Hflz_util.dummy_entry_name } } in
     let tl = List.tl xs in
-    Hflz.decompose_entry_rule (h::tl)
+    Hflz_util.decompose_entry_rule (h::tl)
   )
   
 let assign_id_to_subterm hes =
@@ -241,7 +264,7 @@ let assign_id_to_subterm hes =
     )
     hes
 
-type ctype = TInt | TBool | TUnit | TFunc of ctype * ctype | TAVar of unit Hflmc2_syntax.Id.t | TBVar of unit Hflmc2_syntax.Id.t
+type ctype = TInt | TBool | TUnit | TFunc of ctype * ctype | TAVar of unit Hfl.Id.t | TBVar of unit Hfl.Id.t
 [@@deriving eq,ord,show  { with_path = false }]
 
 let rec show_ctype = function
@@ -249,8 +272,8 @@ let rec show_ctype = function
   | TBool -> "bool"
   | TUnit -> "unit"
   | TFunc (p1, p2) -> "(" ^ show_ctype p1 ^ "->" ^ show_ctype p2 ^ ")"
-  | TAVar id -> "a_" ^ Hflmc2_syntax.Id.to_string id
-  | TBVar id -> "b_" ^ Hflmc2_syntax.Id.to_string id
+  | TAVar id -> "a_" ^ Hfl.Id.to_string id
+  | TBVar id -> "b_" ^ Hfl.Id.to_string id
 
 let rec to_ctype_from_ty ty = match ty with
   | Type.TyBool _ -> TBool

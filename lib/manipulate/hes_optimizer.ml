@@ -1,10 +1,20 @@
-open Hflmc2_syntax
+open Hfl
 (* 
 module Hesutil = struct
   let iter_app (f : Hflz.t -> unit) phi = 
     match phi with
     | 
 end *)
+
+(*TODO: put this somewhere*)
+module Id =
+struct
+  include Hfl.Id
+  let is_pred_name pvar_name =
+  Stdlib.String.length pvar_name >= 0 &&
+  Stdlib.String.sub pvar_name 0 1 <> "_" && (Stdlib.String.uppercase_ascii @@ Stdlib.String.sub pvar_name 0 1) = Stdlib.String.sub pvar_name 0 1
+end
+
 
 let log_src = Logs.Src.create "Optimizer"
 module Log = (val Logs.src_log @@ log_src)
@@ -15,14 +25,14 @@ let show_hes s hes =
   print_endline s;
   print_endline
     (hes
-    |> Hflz.merge_entry_rule
+    |> Hflz_util.merge_entry_rule
     |> Print_syntax.show_hes ~readable:true);
   hes
 
 let log_hes s hes =
   log_string s;
   log_string (hes
-    |> Hflz.merge_entry_rule
+    |> Hflz_util.merge_entry_rule
     |> Print_syntax.show_hes ~readable:true);
   let () =
     match Logs.level () with
@@ -78,19 +88,22 @@ end*) = struct
     in
     (* predicateはboolean以外を返すことは無い。arithmeticの中にhfl predicateは現れない *)
     go hfl *)
-    
+
   let optimize (org_hes : 'a Hflz.hes) =
-    let hes_list = (Hflz.merge_entry_rule org_hes) in
+    let hes_list = (Hflz_util.merge_entry_rule org_hes) in
     let n = List.length hes_list in
-    let pvar_to_id = List.mapi (fun i {Hflz.var;_} -> (var, i)) hes_list in
+    let pvar_to_id = List.mapi (fun i {Hflz.var;_} -> (Id.remove_ty var, i)) hes_list in
     let called_counts = get_pvar_called_counts hes_list in
-    let expanded = Array.make n false in
+
     let hes = Array.of_list hes_list in
-    List.rev hes_list
-    |> List.iteri
-      (fun i ({Hflz.body;_ } as rule) ->
-        let func_id = n - i - 1 in
-        let subst_env =
+    let expanded = Array.make n false in
+
+    (* HES needs to be inlined from the back *)
+    for func_id = n - 1 downto 1 do
+      let rule = hes.(func_id) in
+      let body = rule.body in
+      let fvs = Hflz.fvs body in
+      let subst_env =
           pvar_to_id
           |> List.filter_map (fun (v', func_id') ->
             if List.nth called_counts func_id' = 1 && func_id' > func_id then
@@ -98,23 +111,26 @@ end*) = struct
             else None
           )
           |> IdMap.of_list
-          in
-        let body =
-          Trans.Subst.Hflz.hflz ~callback:(fun v _ ->
-            match List.find_opt (fun (v', _) -> Id.eq v v') pvar_to_id with
-            | Some (_, func_id') -> 
-              expanded.(func_id') <- true
-            | None -> assert false
-          )
-          subst_env
-          body in
-        hes.(func_id) <- { rule with body = Trans.Simplify.hflz body }
-      );
+      in
+
+      (* Remember the predicates that will be expanded
+         so that we can remove them afterwards *)
+      Base.Map.iter_keys subst_env ~f:begin fun var ->
+        if IdSet.mem fvs var then
+          let i = List.assoc var pvar_to_id in
+          expanded.(i) <- true
+      end;
+
+      let body = Trans.Subst.Hflz.hflz subst_env body
+      in
+      hes.(func_id) <- { rule with body = Trans.Simplify.hflz body }
+    done;
+
     Array.to_list hes
     |> List.mapi (fun i r -> (i, r))
     |> List.filter (fun (id, _) -> not expanded.(id))
-    |> List.map (fun (_, r) -> r)
-    |> Hflz.decompose_entry_rule
+    |> List.map snd
+    |> Hflz_util.decompose_entry_rule
 
   let get_recursivity (rules : 'a Type.ty Hflz.hes_rule list) =
     let preds, graph = Hflz_util.get_dependency_graph rules in
@@ -127,7 +143,8 @@ end*) = struct
       )
       preds
 
-  let has_references (_, rules) {Hflz.body; _} =
+  let has_references hes {Hflz.body; _} =
+    let rules = Hflz.equations_of hes in
     let rec go phi =
       match phi with
       | Hflz.Var v -> List.exists (fun {Hflz.var; _} -> Id.eq var v) rules
@@ -142,7 +159,7 @@ end*) = struct
     go body
     
   let inline_non_recursive_variables (no_ref_only : bool) (trivial_only : bool) (org_hes : 'a Hflz.hes) =
-    let org_rules = Hflz.merge_entry_rule org_hes in
+    let org_rules = Hflz_util.merge_entry_rule org_hes in
     let rec_flags = get_recursivity org_rules in
     log_string @@ Hflmc2_util.show_list (fun (id, f) -> id.Id.name ^ ": " ^ string_of_bool f) rec_flags;
     let to_inlinings =
@@ -183,13 +200,28 @@ end*) = struct
         )
         org_rules
         to_inlinings in
-    Hflz.decompose_entry_rule rules
+    Hflz_util.decompose_entry_rule rules
 end
+
+let rec simple_partial_evaluate_arith_ psi =
+  let open Hfl.Arith in
+  match psi with
+  | Op (op, xs) -> begin
+    match Base.List.map ~f:simple_partial_evaluate_arith_ xs with
+    | [Int i; Int j] ->  Int (op_func op i j)
+    | _ -> psi
+  end
+  | Var x -> Var x
+  | Int x -> Int x
+
+let simple_partial_evaluate_arith psi =
+  simple_partial_evaluate_arith_ psi
+
 
 let simple_partial_evaluate_hfl phi =
   let rec go phi = match phi with
-    | Hflz.Arith a -> Hflz.Arith (Arith.simple_partial_evaluate a)
-    | Pred (p, xs) -> Pred (p, List.map Arith.simple_partial_evaluate xs)
+    | Hflz.Arith a -> Hflz.Arith (simple_partial_evaluate_arith a)
+    | Pred (p, xs) -> Pred (p, List.map simple_partial_evaluate_arith xs)
     | Var _ | Bool _ -> phi
     | Or (p1, p2) -> Or (go p1, go p2)
     | And(p1, p2) -> And(go p1, go p2)
@@ -201,9 +233,9 @@ let simple_partial_evaluate_hfl phi =
   go phi
 
 let simple_partial_evaluate_hes hes =
-  Hflz.merge_entry_rule hes |>
+  Hflz_util.merge_entry_rule hes |>
   List.map (fun rule -> { rule with Hflz.body = simple_partial_evaluate_hfl rule.Hflz.body }) |>
-  Hflz.decompose_entry_rule
+  Hflz_util.decompose_entry_rule
 
 let evaluate_trivial_boolean phi =
   let rec go phi = match phi with
@@ -240,20 +272,27 @@ let evaluate_trivial_boolean phi =
   go phi
 
 let evaluate_trivial_boolean hes =
-  Hflz.merge_entry_rule hes |>
+  Hflz_util.merge_entry_rule hes |>
   List.map (fun rule -> { rule with Hflz.body = evaluate_trivial_boolean rule.Hflz.body }) |>
-  Hflz.decompose_entry_rule
+  Hflz_util.decompose_entry_rule
   
-let beta_hes (entry, rules) =
-  Hflz_util.beta IdMap.empty entry |> snd,
-  List.map
-    (fun rule ->
-      let _, body = Hflz_util.beta IdMap.empty rule.Hflz.body in
-      { rule with Hflz.body = body }
-    )
-    rules
+let beta_hes hes =
+  let entry = Hflz.top_formula_of hes in
+  let rules = Hflz.equations_of hes in
+  let entry = Hflz_util.beta IdMap.empty entry |> snd in
+  let rules =
+    List.map
+      (fun rule ->
+        let _, body = Hflz_util.beta IdMap.empty rule.Hflz.body in
+        { rule with Hflz.body = body }
+      )
+      rules
+  in
+  Hflz.mk_hes entry rules
 
-let evaluate_trivial_fixpoints (entry, rules) =
+let evaluate_trivial_fixpoints hes =
+  let entry = Hflz.top_formula_of hes in
+  let rules = Hflz.equations_of hes in
   let rules =
     List.map
       (fun ({Hflz.var; body; fix} as rule) ->
@@ -267,13 +306,14 @@ let evaluate_trivial_fixpoints (entry, rules) =
           rule
       )
       rules in
-  (entry, rules)
+  Hflz.mk_hes entry rules
 
 (* 2つ、1つで下、1つで上、1つで中、betaされる *)
 (* 1つの述語の中で2回参照される *)
 let%expect_test "InlineExpansition.optimize" =
   let open Type in
   let open Hflz in
+  let id_n n t = { Id.name = "x_" ^ string_of_int n; id = n; ty = t } in
   let ty2 = TyArrow (id_n 202 TyInt, TyBool ()) in
   let pvars = [
       id_n 000 (TyArrow (id_n 001 (TyInt), TyBool ()));
@@ -325,7 +365,7 @@ let%expect_test "InlineExpansition.optimize" =
       var = nth 4;
       body = Abs (id_n 401 TyInt, And (Pred (Eq, [Var (id_n 401 `Int); Int 5]), App (Var (nth 3), Arith (Int 6))))
     }] in
-  Hflz_typecheck.type_check (Bool true, org);
+  Hflz_typecheck.type_check @@ mk_hes (Bool true) org;
   ignore [%expect.output];
   print_endline "OK";
   [%expect {| OK |}];
@@ -343,14 +383,14 @@ let%expect_test "InlineExpansition.optimize" =
     {fix: Fixpoint.Greatest
     var: (x_400400 : int -> bool)
     body: λx_401401:int.x_401401 = 5 && x_300300 6} |}];
-  let hes = InlineExpansion.optimize (Bool true, org) in
+  let hes = InlineExpansion.optimize (mk_hes (Bool true) org) in
   ignore [%expect.output];
   (* ignore [%expect.output]; *)
-  Hflz_typecheck.type_check (Bool true, org);
+  Hflz_typecheck.type_check (mk_hes (Bool true) org);
   ignore [%expect.output];
   print_endline "OK";
   [%expect {| OK |}];
-  print_endline @@ Print_syntax.show_hes (snd hes);
+  print_endline @@ Print_syntax.show_hes (equations_of hes);
   (* print_endline @@ show_hes hes; *)
   (* print_endline @@ Util.fmt_string (Print_syntax.hflz_hes_rule Print_syntax.simple_ty_) rule; *)
   [%expect {|
@@ -365,20 +405,20 @@ let%expect_test "InlineExpansition.optimize" =
     body: λx_401401:int.x_401401 = 5 && x_300300 6} |}]
 
 let eliminate_unreachable_predicates (hes : 'a Hflz.hes) : 'a Hflz.hes =
-  let rules = Hflz.merge_entry_rule hes in
+  let rules = Hflz_util.merge_entry_rule hes in
   let _, rgraph = Hflz_util.get_dependency_graph rules in
   let reachables = Mygraph.reachable_nodes_from ~start_is_reachable_initially:true 0 rgraph in
   let rules = 
     List.mapi (fun i r -> r, (List.find_all ((=)i) reachables <> [])) rules
     |> List.filter_map (fun (r, b) -> if b then Some r else None) in
-  Hflz.decompose_entry_rule rules
+  Hflz_util.decompose_entry_rule rules
 
 let inline_bottom_sub hes =
   let inlined = ref false in
   let get_free_preds body =
     Hflz.fvs body
     |> IdSet.filter ~f:(fun p -> Id.is_pred_name p.Id.name) in
-  let rules = Hflz.merge_entry_rule hes in
+  let rules = Hflz_util.merge_entry_rule hes in
   (* 自分のレベル以下のpredicateが出現しないpredicateを一番下のレベルに移動する *)
   let (_, (result_rec, result_low)) =
     List.fold_left
@@ -387,7 +427,7 @@ let inline_bottom_sub hes =
         let lower_preds = IdSet.add lower_preds var in
         let free_predicates = get_free_preds body in
         let (r1, r2) =
-          if IdSet.is_empty (Core.Set.inter free_predicates lower_preds) then
+          if Base.Set.is_empty (Core.Set.inter free_predicates lower_preds) then
             result_rec, (rule::result_low)
           else
             (rule::result_rec), result_low in
@@ -398,8 +438,8 @@ let inline_bottom_sub hes =
   log_string @@ "rules: " ^ Print_syntax.show_hes ~readable:true rules;
   log_string @@ "result_rec: " ^ Print_syntax.show_hes ~readable:true result_rec;
   log_string @@ "result_low: " ^ Print_syntax.show_hes ~readable:true result_low;
-  if List.exists (fun {Hflz.var; _} -> var.name = Hflz.dummy_entry_name) result_low then
-    Hflz.decompose_entry_rule result_low, false
+  if List.exists (fun {Hflz.var; _} -> var.name = Hflz_util.dummy_entry_name) result_low then
+    Hflz_util.decompose_entry_rule result_low, false
   else begin
     let results = result_rec @ result_low in
     let rec inline_sub rules =
@@ -409,7 +449,7 @@ let inline_bottom_sub hes =
       | {Hflz.var; fix=_fix; body}::rem_rules -> begin
         let rem_rules = List.rev rem_rules in
         let free_predicates = get_free_preds body in
-        if IdSet.exists free_predicates ~f:(fun p -> Id.eq p var) then begin
+        if Base.Set.exists free_predicates ~f:(fun p -> Id.eq p var) then begin
           rules
         end else begin
           inlined := true;
@@ -430,7 +470,7 @@ let inline_bottom_sub hes =
       end
     in
     let results = inline_sub results in
-    Hflz.decompose_entry_rule results |> log_hes "inline_bottom_sub(after):", !inlined
+    Hflz_util.decompose_entry_rule results |> log_hes "inline_bottom_sub(after):", !inlined
   end
 
 let rec inline_bottom hes =
@@ -455,10 +495,10 @@ let simplify_non_deterministic_branch_sub phi =
       match p21 with
       | Hflz.Pred _ -> p21, p22
       | _ -> p22, p21 in
-    if (IdSet.equal (IdSet.singleton {x with ty=`Int}) (Hflz.fvs pred1))
-        && not (IdSet.exists ~f:(fun x' -> Id.eq x x') (Hflz.fvs phi1))
-        && not (IdSet.exists ~f:(fun x' -> Id.eq x x') (Hflz.fvs phi2))
-        && Hflz.is_negation_of pred1 pred2 then
+    if (Base.Set.equal (IdSet.singleton {x with ty=`Int}) (Hflz.fvs pred1))
+        && not (Base.Set.exists ~f:(fun x' -> Id.eq x x') (Hflz.fvs phi1))
+        && not (Base.Set.exists ~f:(fun x' -> Id.eq x x') (Hflz.fvs phi2))
+        && (Hflz.negate_formula pred1) = pred2 then
       Some (phi1, phi2)
     else None
   in
@@ -494,19 +534,19 @@ let simplify_non_deterministic_branch_sub phi =
   go phi
   
 let simplify_non_deterministic_branch hes =
-  Hflz.merge_entry_rule hes
+  Hflz_util.merge_entry_rule hes
   |> List.map
       (fun {Hflz.var; body; fix} ->
         let body = simplify_non_deterministic_branch_sub body in
         {Hflz.var; body; fix}
       )
-  |> Hflz.decompose_entry_rule
+  |> Hflz_util.decompose_entry_rule
 
 let eliminate_unused_bindings_sub phi =
   let rec go phi =
     let go_binding x p1 f =
       let (fvs, p1) = go p1 in
-      if IdSet.exists fvs ~f:(fun x' -> Id.eq x' x) then
+      if Base.Set.exists fvs ~f:(fun x' -> Id.eq x' x) then
         (IdSet.remove fvs x, f x p1)
       else
         (fvs, p1) in
@@ -548,13 +588,13 @@ let eliminate_unused_bindings_sub phi =
 let eliminate_unused_bindings hes =
   hes
   |> log_hes "eliminate_unused_bindings (before):"
-  |> Hflz.merge_entry_rule
+  |> Hflz_util.merge_entry_rule
   |> List.map
     (fun rule ->
       { rule with
         Hflz.body = eliminate_unused_bindings_sub rule.Hflz.body }
     )
-  |> Hflz.decompose_entry_rule
+  |> Hflz_util.decompose_entry_rule
   |> log_hes "eliminate_unused_bindings (after):"
 
 let simplify (hes : Type.simple_ty Hflz.hes)=

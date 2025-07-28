@@ -1,13 +1,26 @@
 module Print = Print_syntax
-module Fixpoint = Hflmc2_syntax.Fixpoint
-module Formula = Hflmc2_syntax.Formula
-module IdSet = Hflmc2_syntax.IdSet
+module Fixpoint = Hfl.Fixpoint
+module Formula = Hfl.Formula
+
+module IdSet = Hfl.IdSet
+
 module Eliminate_unused_argument = Eliminate_unused_argument
 module Add_nu_level_extra_arguments = Add_nu_level_extra_arguments
 module Abbrev_variable_numbers = Abbrev_variable_numbers
 
 open Hflz_typecheck
-open Hflz
+open Hfl.Hflz
+
+(* TODO: clean this up *)
+module Id =
+struct
+  include Hfl.Id
+  let remove_vars not_apply_vars =
+  Base.List.filter ~f:(fun v -> not @@ Base.List.exists ~f:(fun v' -> eq v' (remove_ty v)) @@ not_apply_vars)
+  let is_pred_name pvar_name =
+  Stdlib.String.length pvar_name >= 0 &&
+  Stdlib.String.sub pvar_name 0 1 <> "_" && (Stdlib.String.uppercase_ascii @@ Stdlib.String.sub pvar_name 0 1) = Stdlib.String.sub pvar_name 0 1
+end
 
 (* module Util = Hflmc2_util *)
 
@@ -112,7 +125,7 @@ let extract_abstraction phi not_apply_vars new_rule_name_base =
   (* 型情報も入っている。 *)
   (* arithの中のfvも見ている *)
   let free_vars =
-    Hflz.fvs_with_type phi
+    Hflz_util.fvs_with_type phi
     |> Id.remove_vars not_apply_vars in
   (* show *)
   (* print_endline "not_apply";
@@ -225,12 +238,13 @@ let decompose_lambdas hes_names (rule : Type.simple_ty hes_rule) =
     end in
   go rule
 
-let decompose_lambdas_hes (entry, rules) =
+let decompose_lambdas_hes hes =
+  let rules = equations_of hes in
   let hes_names = List.map (fun {var; _} -> Id.remove_ty var) rules in
-  let rules = merge_entry_rule (entry, rules) in
+  let rules = Hflz_util.merge_entry_rule hes in
   let rules = rules |> List.map (decompose_lambdas hes_names) |> List.flatten in
   (* Hflz.decompose_entry_rule rules |> (Hflz_util.with_rules Hflz_util.assign_unique_variable_id) *)
-  Hflz.decompose_entry_rule rules
+  Hflz_util.decompose_entry_rule rules
 
 
 let rectvar_prefix = "rec"
@@ -264,7 +278,7 @@ let get_occuring_arith_terms id_type_map phi =
     | Arith (a) -> [(a, get_occurring_arith_vars a)]
     | Pred (p, xs) -> begin
       match p, xs with
-      | Lt, [Var x; _] when Hflmc2_syntax.IdMap.mem id_type_map (Id.remove_ty x) -> []
+      | Lt, [Var x; _] when Base.Map.mem id_type_map (Id.remove_ty x) -> []
       | _ -> List.map (fun a -> (a, get_occurring_arith_vars a)) xs
     end
   and get_occurring_arith_vars phi = match phi with
@@ -275,7 +289,7 @@ let get_occuring_arith_terms id_type_map phi =
   go_hflz phi |> List.map fst
 
 let get_guessed_terms
-    (id_type_map : Hflz_util.variable_type Hflmc2_syntax.IdMap.t)
+    (id_type_map : Hflz_util.variable_type Hfl.IdMap.t)
     arg_terms
     scoped_variables
     (id_ho_map : ('a Id.t * [ `Int ] Id.t) list) =
@@ -284,14 +298,14 @@ let get_guessed_terms
     Hflmc2_util.show_list (fun term -> Print_syntax.show_hflz term) arg_terms;
   log_string "[get_guessed_terms] id_type_map";
   log_string @@
-    (Hflmc2_syntax.IdMap.fold
+    (Base.Map.fold
       id_type_map
       ~init:[]
       ~f:(fun ~key ~data acc -> (key,data)::acc)
     |> Hflmc2_util.show_list (fun (k, v) -> Id.to_string k ^ ": " ^ Hflz_util.show_variable_type v));
   log_string "[get_guessed_terms] id_ho_map";
   log_string @@ Hflmc2_util.show_list (fun (var_obj, var_arith) -> Id.to_string var_obj ^ ": " ^ Id.to_string var_arith) id_ho_map;
-  let open Hflmc2_syntax in
+  let open Hfl in
   let all_terms =
     (List.map (get_occuring_arith_terms id_type_map) arg_terms |> List.concat) @
     (List.filter_map
@@ -301,7 +315,7 @@ let get_guessed_terms
       )
       scoped_variables) @
     (
-      List.map Hflz.fvs_with_type arg_terms
+      List.map Hflz_util.fvs_with_type arg_terms
       |> List.concat
       |> List.filter_map (fun var -> match var.Id.ty with
         | Type.TySigma _ -> begin
@@ -355,13 +369,15 @@ let to_ty argty basety =
     | x::xs -> Type.TyArrow (x, go xs) in
   go argty
 
-let get_dual_hes ((entry, rules) : Type.simple_ty hes): Type.simple_ty hes =
+let get_dual_hes (hes : Type.simple_ty hes): Type.simple_ty hes =
+  let entry = top_formula_of hes in
   let entry = Hflz.negate_formula entry in
+  let rules = equations_of hes in
   let results = List.map (fun rule -> Hflz.negate_rule rule) rules in
-  let hes = (entry, results) in
+  let hes = mk_hes entry results in
   Log.info begin fun m -> m ~header:"get_dual_hes" "%a" Print.(hflz_hes simple_ty_) hes end;
   type_check hes;
-  entry, results
+  hes
 
 let subst_arith_var replaced formula =
   let rec go_arith arith = match arith with
@@ -381,7 +397,7 @@ let subst_arith_var replaced formula =
   go_formula formula
 
 let to_id_ho_map_from_id_type_map id_type_map =
-  Hflmc2_syntax.IdMap.fold
+  Base.Map.fold
     ~init:[]
     ~f:(fun ~key ~data acc ->
       match data with
@@ -403,7 +419,7 @@ let encode_body_exists_formula_sub
     coe2
     hes_preds
     hfl
-    (id_type_map : Hflz_util.variable_type Hflmc2_syntax.IdMap.t)
+    (id_type_map : Hflz_util.variable_type Hfl.IdMap.t)
     id_ho_map
     use_all_scoped_variables
     env = 
@@ -422,7 +438,7 @@ let encode_body_exists_formula_sub
       | TyInt ->
         Some var
       | TySigma _ -> begin
-        if (Hflz.fvs_with_type hfl
+        if (Hflz_util.fvs_with_type hfl
           |> List.exists (fun fv -> Id.eq fv var))
           then failwith "encode_body_exists_formula_sub: higher-order quantified variable is not supported";
         (* when variable is not used *)
@@ -441,10 +457,10 @@ let encode_body_exists_formula_sub
         let fvs = Hflz.fvs (Arith arith_t) in
         let bound_vars, not_bound_vars =
           Core.Set.partition_tf ~f:(fun id -> List.exists (fun bound_var -> Id.eq bound_var id) bound_vars) fvs in
-        if IdSet.is_empty bound_vars then
+        if Base.Set.is_empty bound_vars then
           [arith_t]
         else
-          IdSet.fold not_bound_vars ~init:[] ~f:(fun acc x -> (Arith.Var {x with ty=`Int})::acc)
+          Base.Set.fold not_bound_vars ~init:[] ~f:(fun acc x -> (Arith.Var {x with ty=`Int})::acc)
       )
       |> List.concat
       |> Hflmc2_util.remove_duplicates (=) in
@@ -453,8 +469,8 @@ let encode_body_exists_formula_sub
   let formula_type_vars = Hflz_util.get_hflz_type hfl |> to_args |> List.rev in
   (* get free variables *)
   let free_vars =
-    ((Hflz.fvs_with_type hfl |> Id.remove_vars hes_preds) @
-    (List.map (fun term -> Hflz.fvs_with_type (Arith term)) guessed_terms |> List.flatten))
+    ((Hflz_util.fvs_with_type hfl |> Id.remove_vars hes_preds) @
+    (List.map (fun term -> Hflz_util.fvs_with_type (Arith term)) guessed_terms |> List.flatten))
     |> List.filter (fun v -> not @@ List.exists (fun v' -> Id.eq v v') bound_vars) in
   let arg_vars = (bound_vars @ free_vars @ formula_type_vars) |> Hflmc2_util.remove_duplicates (Id.eq) in
   let new_pvar =
@@ -539,7 +555,7 @@ let encode_body_exists_formula new_pred_name_cand coe1 coe2 hes_preds hfl id_typ
     | Exists (v, f1) -> begin
       if v.ty <> Type.TyInt then (
         (* boundされている変数の型が整数以外 *)
-        match IdSet.find (fvs f1) ~f:(fun i -> Id.eq i v) with
+        match Base.Set.find (fvs f1) ~f:(fun i -> Id.eq i v) with
         | None ->
           (* boundされている変数が使用されない、つまり無駄なboundなので無視 *)
           go (v::env) hes_preds f1
@@ -562,11 +578,12 @@ let encode_body_exists_formula new_pred_name_cand coe1 coe2 hes_preds hfl id_typ
 let encode_body_exists
     (coe1 : int)
     (coe2 : int)
-    (hes : Hflmc2_syntax.Type.simple_ty Hflz.hes)
-    (id_type_map : Hflz_util.variable_type Hflmc2_syntax.IdMap.t)
+    (hes : Hfl.Type.simple_ty Hflz.hes)
+    (id_type_map : Hflz_util.variable_type Hfl.IdMap.t)
     (id_ho_map : ('b Print.Id.t * [ `Int ] Print.Id.t) list)
     (use_all_scoped_variables : bool) =
-  let (entry, rules) = hes in
+  let entry = top_formula_of hes in
+  let rules = equations_of hes in
   let env = List.map (fun {var; _} -> { var with ty=Type.TySigma var.ty }) rules in
   let entry, new_rules = encode_body_exists_formula None coe1 coe2 env entry id_type_map id_ho_map use_all_scoped_variables in
   let rules =
@@ -578,7 +595,7 @@ let encode_body_exists
       )
     |> List.flatten in
   (* (entry, new_rules @ rules) |> (Hflz_util.with_rules Hflz_util.assign_unique_variable_id) *)
-  let hes = (entry, new_rules @ rules) in
+  let hes = mk_hes entry (new_rules @ rules) in
   Hflz_typecheck.type_check hes;
   hes
 
@@ -712,7 +729,7 @@ let replace_occurences
     (scoped_rec_tvars : ('a Id.t * 'b Id.t) list)
     (rec_tvars : ('a Id.t * Type.simple_ty Type.arg Id.t) list)
     (rec_lex_tvars : ('a Type.arg Id.t * 'a Type.arg Id.t list) list)
-    (id_type_map : Hflz_util.variable_type Hflmc2_syntax.IdMap.t)
+    (id_type_map : Hflz_util.variable_type Hfl.IdMap.t)
     use_all_scoped_variables
     id_ho_map
     (fml : 'a Hflz.t) : 'a Hflz.t =
@@ -916,7 +933,7 @@ let substitute_arith a (before, after) =
   go a
       
     
-let remove_redundant_bounds id_type_map (phi : Type.simple_ty Hflz.t) =
+let remove_redundant_bounds (id_type_map : Hflz_util.variable_type Hfl.IdMap.t) (phi : Type.simple_ty Hflz.t) =
   let rec go phi = match phi with
     | Bool _ | Var _ | Arith _ | Pred _ -> phi
     | Or (p1, p2) -> begin
@@ -942,7 +959,7 @@ let remove_redundant_bounds id_type_map (phi : Type.simple_ty Hflz.t) =
                 let vs = get_occurring_variables_in_arith rhs in
                 match vs with
                 | [v] -> begin
-                  match Hflmc2_syntax.IdMap.find id_type_map v with
+                  match Hfl.IdMap.find id_type_map v with
                   | Some var_category -> begin
                     match var_category with
                     | Hflz_util.VTVarMax ariths -> begin
@@ -977,9 +994,9 @@ let remove_redundant_bounds id_type_map (phi : Type.simple_ty Hflz.t) =
   in 
   go phi
    
-let elim_mu_with_rec (entry, rules) coe1 coe2 lexico_pair_number id_type_map use_all_scoped_variables id_ho_map z3_path =
+let elim_mu_with_rec hes coe1 coe2 lexico_pair_number id_type_map use_all_scoped_variables id_ho_map z3_path =
   (* calc outer_mu_funcs *)
-  let rules = Hflz.merge_entry_rule (entry, rules) in
+  let rules = Hflz_util.merge_entry_rule hes in
   let outer_mu_funcs = get_outer_mu_funcs rules in
   (* make tvars *)
   let rec_tvars =
@@ -1077,7 +1094,7 @@ let elim_mu_with_rec (entry, rules) coe1 coe2 lexico_pair_number id_type_map use
     )
     rules
   in
-  let hes = Hflz.decompose_entry_rule rules in
+  let hes = Hflz_util.decompose_entry_rule rules in
   type_check hes;
   (* hes |> (Hflz_util.with_rules Hflz_util.assign_unique_variable_id) *)
   hes
@@ -1088,7 +1105,7 @@ let encode_body_forall_formula_sub new_pred_name_cand hes_preds hfl =
   let formula_type_vars = Hflz_util.get_hflz_type hfl |> to_args |> List.rev in
   (* get free variables *)
   let free_vars =
-    Hflz.fvs_with_type hfl
+    Hflz_util.fvs_with_type hfl
     |> Id.remove_vars hes_preds in
   let bound_vars, hfl =
       (* sequence of universally bound variables *)
@@ -1104,7 +1121,7 @@ let encode_body_forall_formula_sub new_pred_name_cand hes_preds hfl =
       | TyInt ->
         Some var
       | TySigma _ -> begin
-        if (Hflz.fvs_with_type hfl
+        if (Hflz_util.fvs_with_type hfl
           |> List.exists (fun fv -> Id.eq fv var))
           then failwith "encode_body_forall_formula_sub: higher-order bound variable is not supported";
         (* when variable is not used *)
@@ -1164,7 +1181,7 @@ let encode_body_forall_formula new_pred_name_cand hes_preds hfl =
     | Forall (v, f1) -> begin
       if v.ty <> Type.TyInt then (
         (* boundされている変数の型が整数以外 *)
-        match IdSet.find (fvs f1) ~f:(fun i -> Id.eq i v) with
+        match Base.Set.find (fvs f1) ~f:(fun i -> Id.eq i v) with
         | None ->
           (* boundされている変数が使用されない、つまり無駄なboundなので無視 *)
           go hes_preds f1
@@ -1186,7 +1203,8 @@ let encode_body_forall_formula new_pred_name_cand hes_preds hfl =
 
 (* hesからforallを除去 *)
 let encode_body_forall_except_top (hes : Type.simple_ty Hflz.hes) =
-  let (entry, rules) = hes in
+  let entry = top_formula_of hes in
+  let rules = equations_of hes in
   let env = List.map (fun {var; _} -> { var with ty=Type.TySigma var.ty }) rules in
   let hes =
     rules |>
@@ -1198,14 +1216,14 @@ let encode_body_forall_except_top (hes : Type.simple_ty Hflz.hes) =
       )
     |> List.flatten in
   (* (entry, hes) |> (Hflz_util.with_rules Hflz_util.assign_unique_variable_id) *)
-  (entry, hes)
+  mk_hes entry hes
 
 
 (* Tests *)
 
 open Print
 module Util = Hflmc2_util
-
+let id_n n t = { Id.name = "x_" ^ string_of_int n; id = n; ty = t }
 
 let%expect_test "to_args" =
   let open Type in
@@ -1450,7 +1468,7 @@ let%expect_test "encode_body_forall_formula_sub" =
       body = Abs (id_n 12 TyInt, Abs (id_n 11 TyInt, Bool true));
       fix = Fixpoint.Greatest };
     rule ] in
-  let hes = Bool true, rules in
+  let hes = mk_hes (Bool true) rules in
   let hes = decompose_lambdas_hes hes in
   type_check hes;
   ignore [%expect.output];

@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 open Hflz
 
 module ConvertLib = struct
@@ -297,4 +297,3 @@ let simplify_bound_with_z3 z3_path (exprs : 'a t list) =
     print_endline "";
     exprs @ not_useds
   end
-  

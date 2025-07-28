@@ -1,5 +1,19 @@
-open Hflmc2_syntax
+open Hfl
 module Env = Env_no_value
+
+(*TODO: put this somewhere*)
+module Id =
+struct
+  include Hfl.Id
+  let is_pred_name pvar_name =
+  Stdlib.String.length pvar_name >= 0 &&
+  Stdlib.String.sub pvar_name 0 1 <> "_" && (Stdlib.String.uppercase_ascii @@ Stdlib.String.sub pvar_name 0 1) = Stdlib.String.sub pvar_name 0 1
+
+  let to_string ?(without_id=false) id =
+  if is_pred_name id.name || without_id
+  then id.name
+  else id.name ^ string_of_int id.id (* also show id if the id is for a variable *)
+end
 
 open Add_arguments_tuple
 
@@ -29,7 +43,7 @@ let id_gen ?name ty =
   id
   
 module Simplify = struct
-  open Hflmc2_syntax
+  open Hfl
 
   let rec gen_arith_ (**: Print.Prec.t -> 'avar Arith.gen_t*) =
     fun prec ppf a ->
@@ -345,7 +359,7 @@ let get_free_variables_in_arith a =
   in
   go a
 
-let make_bounds' simplifier (id_type_map : (unit Id.t, Hflz_util.variable_type, IdMap.Key.comparator_witness) Base.Map.t
+let make_bounds' simplifier (id_type_map : (unit Id.t, Hflz_util.variable_type, Id.Key.comparator_witness) Base.Map.t
 ref
 ) (add_args : (ptype' Id.t Arith.gen_t list * int * int * ptype' Id.t) list) (body : ptype' T.thflz) : ptype' T.thflz =
   let rec go = function
@@ -579,7 +593,7 @@ let add_params c1 c2 outer_mu_funcs (rules : ptype2 thes_rule_in_out list) do_no
                 print_endline @@ T.show_use_flag tag;
                 print_endline @@ show_pt_thflz p; *)
                 (* TODO: mutable referenceで良くない *)
-                let added_vars = IdMap.keys !id_type_map in
+                let added_vars = Base.Map.keys !id_type_map in
                 Some (get_occuring_arith_terms p added_vars)
               end else
                 None

@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 open Add_arguments_definition
 
 let unify_flags constraints =

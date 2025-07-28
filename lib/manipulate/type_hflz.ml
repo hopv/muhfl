@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 module Env = Env_no_value
 (* open Hflz *)
 
@@ -19,7 +19,7 @@ type 'ty thflz =
   | Pred   of Formula.pred * 'ty tarith list
   [@@deriving eq,ord,show]
 
-type ptype = TInt | TBool | TUnit | TFunc of ptype * ptype | TVar of unit Hflmc2_syntax.Id.t
+type ptype = TInt | TBool | TUnit | TFunc of ptype * ptype | TVar of unit Hfl.Id.t
 [@@deriving eq,ord,show]
 
 type 'a thes_rule = ('a Id.t * 'a Id.t list * 'a thflz * Fixpoint.t)
@@ -33,7 +33,7 @@ let rec show_ptype = function
   | TBool -> "bool"
   | TUnit -> "unit"
   | TFunc (p1, p2) -> "(" ^ show_ptype p1 ^ "->" ^ show_ptype p2 ^ ")"
-  | TVar id -> Hflmc2_syntax.Id.to_string id
+  | TVar id -> Hfl.Id.to_string id
   
 let rec subst_ptype ptype subst =
   match ptype with
@@ -348,12 +348,12 @@ let infer_thflz_type (rules : ptype thes_rule list): ptype thes_rule list =
   rules
   
 let infer_type (hes : 'a Hflz.hes) =
-  let rules = Hflz.merge_entry_rule hes in
+  let rules = Hflz_util.merge_entry_rule hes in
   let rules = to_thflzs rules dummy_unit_var_name in
   (* print_endline @@ show_s_thes_rules rules; *)
   let rules = infer_thflz_type rules in
   let rules = to_hflz rules in
-  let hes = Hflz.decompose_entry_rule rules in
+  let hes = Hflz_util.decompose_entry_rule rules in
   Hflz_typecheck.type_check hes;
   hes
 
@@ -413,7 +413,7 @@ let eliminate_unit_type_terms (rules: ptype thes_rule list): ptype thes_rule lis
 
 (* TODO: debug *)
 let infer_and_eliminate_unit_type_terms (hes : 'a Hflz.hes) : Type.simple_ty Hflz.hes =
-  let rules = Hflz.merge_entry_rule hes in
+  let rules = Hflz_util.merge_entry_rule hes in
   let rules = to_thflzs rules dummy_unit_var_name in
   (* print_endline "to_thflz";
   print_endline @@ show_s_thes_rules rules; *)
@@ -428,7 +428,7 @@ let infer_and_eliminate_unit_type_terms (hes : 'a Hflz.hes) : Type.simple_ty Hfl
   (* print_endline "infer_thflz_type (2)";
   print_endline @@ show_s_thes_rules rules; *)
   let rules = to_hflz rules in
-  let hes = Hflz.decompose_entry_rule rules in
+  let hes = Hflz_util.decompose_entry_rule rules in
   Hflz_typecheck.type_check hes;
   (* print_endline @@ Hflz.show_hes Type.pp_simple_ty hes;  *)
   hes

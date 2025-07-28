@@ -1,5 +1,15 @@
-open Hflmc2_syntax
+open Hfl
 open Hflz
+
+(*TODO: put this somewhere*)
+module Id =
+struct
+  include Hfl.Id
+  let is_pred_name pvar_name =
+  Stdlib.String.length pvar_name >= 0 &&
+  Stdlib.String.sub pvar_name 0 1 <> "_" && (Stdlib.String.uppercase_ascii @@ Stdlib.String.sub pvar_name 0 1) = Stdlib.String.sub pvar_name 0 1
+end
+
 
 let log_src = Logs.Src.create "Optimizer"
 module Log = (val Logs.src_log @@ log_src)
@@ -7,7 +17,7 @@ module Log = (val Logs.src_log @@ log_src)
 let log_string = Hflz_util.log_string Log.info
 
 let get_occurrences hes =
-  let rules = merge_entry_rule hes in
+  let rules = Hflz_util.merge_entry_rule hes in
   let map = Hashtbl.create 10 in
   let rec go phi = match phi with
     | App (phi1, phi2) -> begin
@@ -117,7 +127,7 @@ let get_constant_substitution occurrences parameters =
     List.combine occurrences parameters
     |> List.map (fun ((p, lss), (p', par)) ->
       assert (
-        (p.Id.name = dummy_entry_name && p'.Id.name = dummy_entry_name) ||
+        (p.Id.name = Hflz_util.dummy_entry_name && p'.Id.name = Hflz_util.dummy_entry_name) ||
         Id.eq p p');
       let l_len =
         match lss with
@@ -148,14 +158,14 @@ let get_constant_substitution occurrences parameters =
             (fun (form, arg) ->
               match form with
               | Var x -> begin
-                if IdSet.exists all_params ~f:(Id.eq x) then
+                if Base.Set.exists all_params ~f:(Id.eq x) then
                   Mygraph2.add_edge g (to_node arg) (Some (Var x))
                 else
                   (* the formula is a variable which is not a parameter *)
                   Mygraph2.add_edge g (to_node arg) None
               end
               | _ -> begin
-                if IdSet.is_empty (fvs form) then
+                if Base.Set.is_empty (fvs form) then
                   Mygraph2.add_edge g (to_node arg) (Some form)
                 else
                   (* the formula contains free variables => cannot be inlined *)
@@ -220,11 +230,11 @@ let substitute_occurrences hes subst =
     | arg::rem ->
       Abs (arg, to_abs body rem)
     | [] -> body in
-  let rules = merge_entry_rule hes in
+  let rules = Hflz_util.merge_entry_rule hes in
   let rules =
     List.map
       (fun {var; body = whole_body; fix} ->
-        if var.name = dummy_entry_name then
+        if var.name = Hflz_util.dummy_entry_name then
           {var; body = whole_body; fix}
         else begin
           let _, consts = List.find (fun (p, _) -> Id.eq p var) subst in
@@ -306,14 +316,14 @@ let substitute_occurrences hes subst =
   let () =
     log_string "Substed";
     log_string @@ Print_syntax.show_hes ~readable:true rules in
-  decompose_entry_rule rules
+  Hflz_util.decompose_entry_rule rules
   
 let run hes =
   (* list of pairs of predicate and occurrence *)
   let occurrences = get_occurrences hes in
   (* list of pairs of predicate and parameter *)
   let parameters =
-    merge_entry_rule hes
+    Hflz_util.merge_entry_rule hes
     |> List.map
       (fun {var; body; _} ->
         let params, _ = decompose_abs body in
@@ -323,4 +333,3 @@ let run hes =
   let subst = get_constant_substitution occurrences parameters in
   let hes = substitute_occurrences hes subst in
   hes
-  

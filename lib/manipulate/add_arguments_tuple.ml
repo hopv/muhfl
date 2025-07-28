@@ -1,5 +1,5 @@
 module T = Add_arguments_definition
-open Hflmc2_syntax
+open Hfl
 
 let log_src = Logs.Src.create "Pa_tuple"
 module Log = (val Logs.src_log @@ log_src)
