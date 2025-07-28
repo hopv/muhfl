@@ -3,7 +3,10 @@
  (inline_tests)
  (libraries
    fmt
+   fmt.cli
+   fmt.tty
    logs
+   logs.cli
    logs.fmt
    str
    core
