@@ -3,8 +3,6 @@
  (libraries
     hflmc2_util
     hflmc2_syntax
-    ltl_program
-    branching_time_program
     muhfl.muhfl_prover
     muFU_core
     )
