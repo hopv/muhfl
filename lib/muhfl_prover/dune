@@ -2,7 +2,7 @@
  (name muhfl_prover)
  (public_name muhfl.muhfl_prover)
  (libraries
-   hflmc2_syntax
+   hfl
    muhfl.manipulate
    async
    yojson

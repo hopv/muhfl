@@ -3,7 +3,6 @@
  (libraries
     hfl
     hflmc2_util
-    hflmc2_syntax
     muhfl.muhfl_prover
     muFU_core
     )
