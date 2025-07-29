@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 open Print
 open Core
 
@@ -15,45 +15,47 @@ let convert_nu_hflz_to_program_with_exception ppf hes =
     Fmt.pf ppf "%s" (Id.to_string id |> String.lowercase) in
   let formula = gen_formula_ void_ (ignore_prec id) Prec.zero in
   let arith_ prec ppf a = gen_arith_ (ignore_prec id) prec ppf a in
-  let rec go prec ppf phi = match phi with
+  let rec go prec ppf phi =
+    let (<) = Prec.(<) in
+    match phi with
     | Hflz.Bool true ->
       Fmt.string ppf "true"
     | Bool false ->
-      show_paren (prec > Prec.app) ppf "%s"
+      show_paren (Prec.app < prec) ppf "%s"
         ("raise " ^ exn_name)
     | Pred (pred, as') ->
-      show_paren (prec > Prec.abs) ppf "@[<1>if@ %a@ then@ true@ else@ raise %s@]"
+      show_paren (Prec.abs < prec) ppf "@[<1>if@ %a@ then@ true@ else@ raise %s@]"
         formula (Formula.Pred(pred, as'))
         exn_name
     | And (Or ((Pred _) as p1, p2), Or ((Pred (pred, as')) as p1', p3)) when Stdlib.(=) p1 (Hflz.negate_formula p1') ->
-      show_paren (prec > Prec.abs) ppf "@[<1>if@ %a@ then@ %a@ else@ %a@]"
+      show_paren (Prec.abs < prec) ppf "@[<1>if@ %a@ then@ %a@ else@ %a@]"
         formula (Formula.Pred(pred, as'))
         (go Prec.abs) p2
         (go Prec.abs) p3
     | Or (And ((Pred (pred, as')) as p1, p2), And ((Pred _) as p1', p3)) when Stdlib.(=) p1 (Hflz.negate_formula p1') ->
-      show_paren (prec > Prec.abs) ppf "@[<1>if@ %a@ then@ %a@ else@ %a@]"
+      show_paren (Prec.abs < prec) ppf "@[<1>if@ %a@ then@ %a@ else@ %a@]"
         formula (Formula.Pred(pred, as'))
         (go Prec.abs) p2
         (go Prec.abs) p3
     | Or (p1, p2) ->
       let result = go_ors prec ppf phi in
       if not result then
-        show_paren (prec > Prec.abs) ppf "@[<1>try@ %a@ with@ %s@ ->@ %a@]"
+        show_paren (Prec.abs < prec) ppf "@[<1>try@ %a@ with@ %s@ ->@ %a@]"
           (go Prec.abs) p1 exn_name (go Prec.abs) p2
     | And (p1, p2) ->
-      show_paren (prec > Prec.abs) ppf "@[<1>if@ Random.bool ()@ then@ %a@ else@ %a@]"
+      show_paren (Prec.abs < prec) ppf "@[<1>if@ Random.bool ()@ then@ %a@ else@ %a@]"
         (go Prec.abs) p1 (go Prec.abs) p2
     | Forall (x, p1) ->
-      show_paren (prec > Prec.abs) ppf "@[<1>let@ %a =@ Random.int 0 in@ %a@]"
+      show_paren (Prec.abs < prec) ppf "@[<1>let@ %a =@ Random.int 0 in@ %a@]"
         id x (go Prec.abs) p1
     | App (p1, p2) ->
-      show_paren (prec > Prec.app) ppf "@[<1>%a@ %a@]"
+      show_paren (Prec.app < prec) ppf "@[<1>%a@ %a@]"
         (go Prec.app) p1
         (go Prec.(succ app)) p2
     | Arith a ->
       arith_ prec ppf a
     | Abs (x, p1) ->
-      show_paren (prec > Prec.abs) ppf "@[<1>fun (%a:%a) ->@,%a@]"
+      show_paren (Prec.abs < prec) ppf "@[<1>fun (%a:%a) ->@,%a@]"
         id x
         simple_argty x.Id.ty
         (go Prec.abs)
@@ -81,7 +83,7 @@ let convert_nu_hflz_to_program_with_exception ppf hes =
       | _ -> assert false
     in
     let format_sub a b =
-      show_paren (prec > Prec.abs) ppf "@[<1>if@ %a@ then@ true@ else@ %a@]"
+      show_paren (Prec.(<) Prec.abs prec) ppf "@[<1>if@ %a@ then@ true@ else@ %a@]"
         (Fmt.list ~sep:(fmt_string " || ") fmt_formula) preds
         a b
     in
@@ -116,7 +118,8 @@ let convert_nu_hflz_to_program_with_exception ppf hes =
       id var
       (Fmt.list ~sep:(fmt_string " ") go_arg) args
       (go Prec.abs) body in
-  let (entry, rules) = hes in
+  let entry = Hflz.top_formula_of hes in
+  let rules = Hflz.equations_of hes in
   Fmt.pf ppf "@[<v>exception E\nlet rec@ %a@ let main =@ %a@]"
     (Fmt.list ~sep:(fmt_string "\nand ") (go_rule)) rules
     (go Prec.abs) entry
