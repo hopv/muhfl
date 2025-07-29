@@ -1,6 +1,6 @@
 (executables
  (names check_formula_equality converter abbrev dual simplify_model as_program add_arguments check_shadowing convert_nu_hflz_to_program_with_exception remove_disjunctions mufu add_nu_level_extra_arguments reorder_arguments to_prefix_notation)
- (libraries muhfl core core_unix.command_unix)
+ (libraries muhfl core core_unix.command_unix hfl)
  (preprocess (pps ppx_jane))
  ; (flags (-cclib -lstdc++))
  ; (link_flags (-linkall))
