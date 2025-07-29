@@ -1,5 +1,5 @@
 module Util        = Hflmc2_util
-module Syntax      = Hflmc2_syntax
+module Syntax      = Hfl
 module Manipulate  = Manipulate
 
 open Util
@@ -40,17 +40,26 @@ let report_times () =
 
 let show_result = Muhfl_prover.Status.string_of
 
-let check_predicate_name (_, psi) =
+let check_predicate_name hes =
+  let rules = Hflz.equations_of hes in
   List.iter
-    psi
+    rules
     ~f:(fun {Hflz.var; _} ->
       if var.name ="Sentry" then failwith "You cannot use name \"Sentry\" except the first predicate."
     )
 
+let parse_and_desugar_from_file file =
+  In_channel.with_file file ~f:begin fun ch ->
+    let raw = Parse.from_channel ~file_name:file ch in
+    let (hes,a) = Raw_hflz.to_typed (raw, []) in
+    Hflz.desugar hes, a
+  end
+
+
 let parse_file_with_mufu file =
   let open Syntax in
   (* make sure the input formula can be typed *)
-  ignore @@ Syntax.parse_file file;
+  ignore @@ parse_and_desugar_from_file file;
   let raw, env = parse_file_to_raw file in
   Log.info begin fun m -> m ~header:"Input" "mufu transformation start" end;
   let raw, s = MuFU_core.transform raw env in
@@ -62,7 +71,8 @@ let parse_file_with_mufu file =
   |> Hflz.desugar
 
 let add_top_level_foralls hes =
-  let entry, rules = hes in
+  let entry = Hflz.top_formula_of hes in
+  let rules = Hflz.equations_of hes in
   let args, entry_body = Hflz.decompose_abs entry in
   let entry =
     List.fold_left
@@ -74,14 +84,14 @@ let add_top_level_foralls hes =
       )
       ~init:entry_body
       args in
-  entry, rules
-  
+  Hflz.mk_hes entry rules
+
 let parse file =
   let psi =
     if !Options.mufu
     then parse_file_with_mufu file
     else begin
-      let psi, _ = Syntax.parse_file file in
+      let psi, _ = parse_and_desugar_from_file file in
       psi
     end in
   let psi = add_top_level_foralls psi in
