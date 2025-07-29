@@ -190,7 +190,6 @@ let show_debug_context = Muhfl_prover.show_debug_context
 let show_debug_contexts = Muhfl_prover.show_debug_contexts
 let abbrev_variable_numbers_hes = Manipulate.Abbrev_variable_numbers.abbrev_variable_numbers_hes
 let convert_nu_hflz_to_program_with_exception = Muhfl_prover.Mochi_solver.convert_nu_hflz_to_program_with_exception
-let remove_disjunctions = Manipulate.Remove_disjunctions.convert
 let constant_propagation =  Manipulate.Constant_propagation.run
 let simplify_if_condition = Manipulate.Simplify_if_condition.run
 let mufu_transform = MuFU_core.transform
