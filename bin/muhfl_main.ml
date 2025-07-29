@@ -22,7 +22,7 @@ let () =
             Fmt.pr "%s\n" (Muhfl.show_result r);
       | exception
           ( Muhfl.Util.Fn.Fatal e
-          | Muhfl.Syntax.ParseError e
-          | Muhfl.Syntax.LexingError e
+          | Hfl.Exception.Parse_error e
+          | Hfl.Exception.Lexing_error e
           ) -> print_endline e; exit 1
     )
