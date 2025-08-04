@@ -1,15 +1,7 @@
-open Hfl
-open Hflz
-
-(*TODO: put this somewhere*)
-module Id =
-struct
-  include Hfl.Id
-  let is_pred_name pvar_name =
-  Stdlib.String.length pvar_name >= 0 &&
-  Stdlib.String.sub pvar_name 0 1 <> "_" && (Stdlib.String.uppercase_ascii @@ Stdlib.String.sub pvar_name 0 1) = Stdlib.String.sub pvar_name 0 1
-end
-
+open Hfl.Hflz
+module IdSet = Hfl.IdSet
+module IdMap = Hfl.IdMap
+module Type = Hfl.Type
 
 let log_src = Logs.Src.create "Optimizer"
 module Log = (val Logs.src_log @@ log_src)
@@ -246,7 +238,7 @@ let substitute_occurrences hes subst =
                   match List.nth_opt consts i with
                   | Some (Some t) ->
                     args',
-                    Trans.Subst.Hflz.hflz (IdMap.singleton arg t) body
+                    Hfl.Trans.Subst.Hflz.hflz (IdMap.singleton arg t) body
                   | Some None | None ->
                     (arg::args'),
                     body

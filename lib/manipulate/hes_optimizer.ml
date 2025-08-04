@@ -1,20 +1,13 @@
+module Id_Muhfl__ = Id
 open Hfl
+module Id = Id_Muhfl__
+
 (* 
 module Hesutil = struct
   let iter_app (f : Hflz.t -> unit) phi = 
     match phi with
     | 
 end *)
-
-(*TODO: put this somewhere*)
-module Id =
-struct
-  include Hfl.Id
-  let is_pred_name pvar_name =
-  Stdlib.String.length pvar_name >= 0 &&
-  Stdlib.String.sub pvar_name 0 1 <> "_" && (Stdlib.String.uppercase_ascii @@ Stdlib.String.sub pvar_name 0 1) = Stdlib.String.sub pvar_name 0 1
-end
-
 
 let log_src = Logs.Src.create "Optimizer"
 module Log = (val Logs.src_log @@ log_src)

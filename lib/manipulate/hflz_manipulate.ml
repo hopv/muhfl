@@ -11,17 +11,6 @@ module Abbrev_variable_numbers = Abbrev_variable_numbers
 open Hflz_typecheck
 open Hfl.Hflz
 
-(* TODO: clean this up *)
-module Id =
-struct
-  include Hfl.Id
-  let remove_vars not_apply_vars =
-  Base.List.filter ~f:(fun v -> not @@ Base.List.exists ~f:(fun v' -> eq v' (remove_ty v)) @@ not_apply_vars)
-  let is_pred_name pvar_name =
-  Stdlib.String.length pvar_name >= 0 &&
-  Stdlib.String.sub pvar_name 0 1 <> "_" && (Stdlib.String.uppercase_ascii @@ Stdlib.String.sub pvar_name 0 1) = Stdlib.String.sub pvar_name 0 1
-end
-
 (* module Util = Hflmc2_util *)
 
 let simplify_bound = ref false
@@ -580,7 +569,7 @@ let encode_body_exists
     (coe2 : int)
     (hes : Hfl.Type.simple_ty Hflz.hes)
     (id_type_map : Hflz_util.variable_type Hfl.IdMap.t)
-    (id_ho_map : ('b Print.Id.t * [ `Int ] Print.Id.t) list)
+    (id_ho_map : ('b Id.t * [ `Int ] Id.t) list)
     (use_all_scoped_variables : bool) =
   let entry = top_formula_of hes in
   let rules = equations_of hes in

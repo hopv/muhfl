@@ -1,19 +1,7 @@
+module Id__ = Id
 open Hfl
+module Id = Id__
 module Env = Env_no_value
-
-(*TODO: put this somewhere*)
-module Id =
-struct
-  include Hfl.Id
-  let is_pred_name pvar_name =
-  Stdlib.String.length pvar_name >= 0 &&
-  Stdlib.String.sub pvar_name 0 1 <> "_" && (Stdlib.String.uppercase_ascii @@ Stdlib.String.sub pvar_name 0 1) = Stdlib.String.sub pvar_name 0 1
-
-  let to_string ?(without_id=false) id =
-  if is_pred_name id.name || without_id
-  then id.name
-  else id.name ^ string_of_int id.id (* also show id if the id is for a variable *)
-end
 
 open Add_arguments_tuple
 

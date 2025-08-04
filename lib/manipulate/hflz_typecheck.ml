@@ -1,5 +1,4 @@
 module Hflz = Hfl.Hflz
-module Id = Hfl.Id
 module Arith = Hfl.Arith
 module Type = Hfl.Type
 open Hflz
