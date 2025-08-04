@@ -1,29 +1,7 @@
 module Hflz = Hfl.Hflz
 module Id = Hfl.Id
-
-(* TODO clean this up *)
-module Type =
-struct
-  include Hfl.Type
-  let eq_modulo_arg_ids : simple_ty -> simple_ty -> bool =
-  let rec go = fun ty1 ty2 -> match ty1, ty2 with
-  | TyBool _, TyBool _ -> true
-  | TyArrow ({ty=ty1;_}, body1), TyArrow({ty=ty2;_}, body2) -> begin
-    let tyf =
-      match ty1, ty2 with
-      | TySigma ty1', TySigma ty2' ->
-        go ty1' ty2'
-      | TyInt, TyInt -> true
-      | _ -> false in
-    tyf && go body1 body2
-  end
-  | _ -> false in
-  go
-end
-
-
-
 module Arith = Hfl.Arith
+module Type = Hfl.Type
 open Hflz
 
 type ty_env = (Type.simple_ty Type.arg Id.t) list
@@ -175,7 +153,7 @@ let get_hflz_type : ty_env -> Type.simple_ty Hflz.t -> Type.simple_ty = fun env 
     end
     | TyArrow ({ty=TySigma ty; _} as arg, tybody) -> begin
       let ty2 = go env f2 in
-      if Type.eq_modulo_arg_ids ty2 ty
+      if Type.equal_simple_ty ty2 ty
       then tybody
       else failwith @@ "App_TyArrow type mismatch" ^ (show_fm hfl) ^ "ty1=" ^ (show_arg arg.ty) ^ " / ty2=" ^ (show_arg (TySigma ty2)) ^
         "\nsimplified:\nty1=" ^ (show_arg_ty_s arg.ty) ^ "/ ty2=" ^ (show_arg_ty_s (TySigma ty2))
@@ -211,7 +189,7 @@ let set_variable_ty (hes : Type.simple_ty hes) : Type.simple_ty hes =
     | Var v -> begin
       match List.find_opt (fun k -> Id.eq k v) env with
       | Some {ty=ty';_} ->
-        if not @@ Type.eq_modulo_arg_ids v.ty ty' then
+        if not @@ Type.equal_simple_ty v.ty ty' then
           failwith @@
             "Var: `" ^ (show_id v) ^ "`type mismatch (eq_modulo_arg_ids):\n" ^
             "type of variable in formula:\n" ^
@@ -281,10 +259,10 @@ let type_check (hes : Type.simple_ty hes) : unit =
       )
       rules in
   let ty' = get_hflz_type env entry in
-  if not @@ Type.eq_modulo_arg_ids ty' (TyBool ()) then failwith @@ "rule type mismatch (Checked type: " ^ show_ty ty' ^ " / Env type: " ^ show_ty (TyBool ()) ^ ")";
+  if not @@ Type.equal_simple_ty ty' (TyBool ()) then failwith @@ "rule type mismatch (Checked type: " ^ show_ty ty' ^ " / Env type: " ^ show_ty (TyBool ()) ^ ")";
   List.iter (fun ({var={ty;_}; body; _}) -> 
     let ty' = get_hflz_type env body in
-    if not @@ Type.eq_modulo_arg_ids ty' ty then failwith @@ "rule type mismatch (Checked type: " ^ show_ty ty' ^ " / Env type: " ^ show_ty ty ^ ")"
+    if not @@ Type.equal_simple_ty ty' ty then failwith @@ "rule type mismatch (Checked type: " ^ show_ty ty' ^ " / Env type: " ^ show_ty ty ^ ")"
   ) rules;
 (*   
   (* 近似処理で同じIDの変数が現れる *)

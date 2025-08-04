@@ -1,26 +1,6 @@
 open Hfl
 open Hflz
 
-(* TODO clean this up *)
-module Type =
-struct
-  include Type
-  let eq_modulo_arg_ids : simple_ty -> simple_ty -> bool =
-  let rec go = fun ty1 ty2 -> match ty1, ty2 with
-  | TyBool _, TyBool _ -> true
-  | TyArrow ({ty=ty1;_}, body1), TyArrow({ty=ty2;_}, body2) -> begin
-    let tyf =
-      match ty1, ty2 with
-      | TySigma ty1', TySigma ty2' ->
-        go ty1' ty2'
-      | TyInt, TyInt -> true
-      | _ -> false in
-    tyf && go body1 body2
-  end
-  | _ -> false in
-  go
-end
-
 type variable_type =
   (* | VTOrdinal
   | VTRec *)
@@ -96,7 +76,7 @@ let get_hflz_type phi =
         | TyInt -> (match f2 with Arith _ -> () | _ -> failwith @@ "Illegal type (App, Arrow) (ty1=TyInt, ty2=(not integet expression)) (expression: " ^ show_hflz phi ^ ")")
         | TySigma t -> (
           let sty2 = go f2 in
-          if not @@ eq_modulo_arg_ids t sty2 then (
+          if not @@ Type.equal_simple_ty t sty2 then (
             failwith @@ "Type assertion failed (ty1=" ^ show_simple_ty t ^ ", ty2=" ^ show_simple_ty sty2 ^ ")"
           )
         )
