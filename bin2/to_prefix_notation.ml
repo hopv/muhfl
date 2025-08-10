@@ -43,20 +43,13 @@ let _map_file_path path converter =
   let dir, base, ext = converter (dir, base, ext) in
   Stdlib.Filename.concat dir (base ^ ext)
 
-let parse_to_raw file =
-  Core.In_channel.with_file file ~f:begin fun ch ->
-    let lexbuf = Lexing.from_channel ch in
-    lexbuf.lex_start_p <- { lexbuf.lex_start_p with pos_fname = file };
-    lexbuf.lex_curr_p  <- { lexbuf.lex_curr_p  with pos_fname = file };
-    lexbuf
-    |> Muhfl.Syntax.Parser.main
-  end
+let parse_to_raw file = Muhfl.parse_from_file file
 
 let show_as_prefix_notation {Muhfl.Syntax.Raw_hflz.body; _} =
   print_endline @@ trans_expr body
 
 let main file =
-  let hes, _ = parse_to_raw file in
+  let hes  = parse_to_raw file in
   List.iter show_as_prefix_notation hes
   
 let command =

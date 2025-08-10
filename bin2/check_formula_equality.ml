@@ -3,10 +3,12 @@ open Core
 let main path1 path2 = 
   let phi1 = Muhfl.parse path1 in
   let phi2 = Muhfl.parse path2 in
-  let phi1' = Muhfl.assign_serial_to_vars_hes phi1 in
-  let phi2' = Muhfl.assign_serial_to_vars_hes phi2 in
-  let phi1' = Hflmc2_syntax.Hflz.merge_entry_rule phi1' in
-  let phi2' = Hflmc2_syntax.Hflz.merge_entry_rule phi2' in
+  let (top1, rules1) = Muhfl.assign_serial_to_vars_hes phi1 in
+  let phi1' = Hfl.Hflz.mk_hes top1 rules1 in
+  let (top2, rules2) = Muhfl.assign_serial_to_vars_hes phi2 in
+  let phi2' = Hfl.Hflz.mk_hes top2 rules2 in
+  let phi1' = Muhfl.Manipulate.Hflz_util.merge_entry_rule phi1' in
+  let phi2' = Muhfl.Manipulate.Hflz_util.merge_entry_rule phi2' in
   let res, error_path = Muhfl.check_equal_hes phi1' phi2' in
   (if res then
     print_endline "(func) Equal"

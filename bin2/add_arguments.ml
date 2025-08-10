@@ -20,9 +20,9 @@ let main path1 debug simplified_type no_abbrev =
   in
   print_endline @@ Hflmc2_util.fmt_string (fun fmt -> Manipulate.Print_syntax.(hflz_hes simple_ty_) fmt) phi1;
   let () =
-    let open Hflmc2_syntax in
+    let open Hfl in
     
-    let strs = IdMap.fold id_type_map ~init:[] ~f:(fun ~key ~data acc -> (key.Id.name ^ ": " ^ Manipulate.Hflz_util.show_variable_type data) :: acc) in
+    let strs = Map.fold id_type_map ~init:[] ~f:(fun ~key ~data acc -> (key.Id.name ^ ": " ^ Manipulate.Hflz_util.show_variable_type data) :: acc) in
     print_endline @@ "id_type_map: " ^ Hflmc2_util.show_list (fun s -> s) strs;
     print_endline @@ "id_ho_map: " ^ Hflmc2_util.show_list (fun (t, id) -> "(" ^ t.Id.name ^ ", " ^ id.Id.name ^ ")") id_ho_map
   in
