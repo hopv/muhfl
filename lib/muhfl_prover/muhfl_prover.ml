@@ -594,16 +594,10 @@ module SuzukiSolver : BackendSolver = struct
           with _ -> Status.Unknown, None)
 end
 
-let rec is_first_order_function_type (ty : Hfl.Type.simple_ty) =
-  match ty with
-  | TyBool () -> true
-  | TyArrow (ty1, ty2) -> 
-    ty1.ty = TyInt && is_first_order_function_type ty2
-  
 let is_first_order_hes hes =
   Hflz_mani.decompose_lambdas_hes hes
   |> (fun hes -> Hflz_util.merge_entry_rule hes)
-  |> List.for_all (fun { Hflz.var; _} -> is_first_order_function_type var.ty)
+  |> List.for_all (fun { Hflz.var; _} -> Hfl.Type.order var.ty <= 1)
   
 let solve_onlynu_onlyforall solve_options debug_context hes with_par stop_if_intractable will_try_weak_subtype stop_if_tractable =
   let run =
@@ -617,41 +611,6 @@ let solve_onlynu_onlyforall solve_options debug_context hes with_par stop_if_int
       | Mochi -> MochiSolver.run
     ) in
   run solve_options debug_context hes with_par stop_if_intractable will_try_weak_subtype stop_if_tractable >>| (fun s -> (s, debug_context))
-  
-let fold_hflz folder phi init =
-  let rec go phi acc = match phi with
-    | Hflz.Bool   _ -> folder acc phi 
-    | Hflz.Var    _ -> folder acc phi
-    | Hflz.Or (f1, f2)  -> folder acc phi |> go f1 |> go f2
-    | Hflz.And (f1, f2) -> folder acc phi |> go f1 |> go f2
-    | Hflz.Abs (_, f1)  -> folder acc phi |> go f1
-    | Hflz.Forall (_, f1) -> folder acc phi |> go f1
-    | Hflz.Exists (_, f1) -> folder acc phi |> go f1
-    | Hflz.App (f1, f2)   -> folder acc phi |> go f1 |> go f2
-    | Hflz.Arith _ -> folder acc phi
-    | Hflz.Pred _ -> folder acc phi in
-  go phi init
-
-let is_onlyforall_body formula =
-  fold_hflz (fun b f -> match f with Hflz.Exists _ -> false | _ -> b) formula true
-let is_onlynu_onlyforall_rule {Hflz.fix; body; _} =
-  (fix = Fixpoint.Greatest) && is_onlyforall_body body
-let is_onlynu_onlyforall hes =
-  let entry = Hflz.top_formula_of hes in
-  let rules = Hflz.equations_of hes in
-  is_onlyforall_body entry
-  && (List.for_all is_onlynu_onlyforall_rule rules)
-
-let is_onlyexists_body formula =
-  fold_hflz (fun b f -> match f with Hflz.Forall _ -> false | _ -> b) formula true
-let is_onlymu_onlyexists_rule {Hflz.fix; body; _} =
-  (fix = Fixpoint.Least) && is_onlyexists_body body
-let is_onlymu_onlyexists hes =
-  let entry = Hflz.top_formula_of hes in
-  let rules = Hflz.equations_of hes in
-  is_onlyexists_body entry
-  && (List.for_all is_onlymu_onlyexists_rule rules)
-
 
 let is_nu_only_tractable hes =
   let path = Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~without_id:false true hes in
@@ -1285,9 +1244,9 @@ let check_validity solve_options (hes : 'a Hflz.hes) cont =
       if solve_options.always_approximate then
         check_validity_full_entry solve_options hes iter_count_offset
       else begin
-        if is_onlynu_onlyforall hes then
+        if Hflz.is_nuonly hes then
           solve_onlynu_onlyforall_with_schedule solve_options hes
-        else if is_onlymu_onlyexists hes then
+        else if Hflz.is_muonly hes then
           solve_onlynu_onlyforall_with_schedule solve_options (Hflz_mani.get_dual_hes hes)
           >>| (fun (status_pair, i) -> (Status.flip status_pair, i))
         else check_validity_full_entry solve_options hes iter_count_offset
