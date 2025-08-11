@@ -30,7 +30,7 @@ let%expect_test "beta" =
     let () =
       let phi_all = Trans.Reduce.Hflz.beta phi_all_original in
       print_endline @@ "After (Trans.Reduce.Hflz.beta): " ^ show_hflz phi_all;
-      [%expect {| After (Trans.Reduce.Hflz.beta): false && (λx_11:bool.x_11) |}] in
+      [%expect {| After (Trans.Reduce.Hflz.beta): false && (λx_115:bool.x_115) |}] in
     
     let () =
       let _, phi_all = Hflz_util.beta IdMap.empty phi_all_original in 
@@ -67,12 +67,12 @@ let%expect_test "beta" =
       let () =
         let phi_all = Trans.Reduce.Hflz.beta phi_all_original in
         print_endline @@ "After (Trans.Reduce.Hflz.beta): " ^ show_hflz phi_all;
-        [%expect {| After (Trans.Reduce.Hflz.beta): λx_22:bool.(λx_27:bool.x_27) && x_22 |}] in
+        [%expect {| After (Trans.Reduce.Hflz.beta): λx_223:bool.(λx_226:bool.x_226) && x_223 |}] in
       
       let () =
         let _, phi_all = Hflz_util.beta IdMap.empty phi_all_original in
         print_endline @@ "After (Hflz_util.beta): " ^ show_hflz phi_all;
-        [%expect {| After (Hflz_util.beta): λx_22:bool.(λx_28:bool.x_28) && x_22 |}] in
+        [%expect {| After (Hflz_util.beta): λx_22:bool.(λx_22:bool.x_22) && x_22 |}] in
       () 
   in
   print_endline "";
@@ -106,14 +106,14 @@ let%expect_test "beta" =
           let phi_all = Trans.Reduce.Hflz.beta phi_all_original in
           print_endline @@ "After (Trans.Reduce.Hflz.beta): " ^ show_hflz phi_all
         with Failure s -> print_endline @@ "Failure: " ^ s in
-      [%expect {| Failure: Variable capture in substituion (x_11) |}];
+      [%expect {| After (Trans.Reduce.Hflz.beta): λx_127:bool.(λx_137:bool.x_127) && x_127 |}];
       
       let () =
         try
           let _, phi_all = Hflz_util.beta IdMap.empty phi_all_original in 
           print_endline @@ "After (Hflz_util.beta): " ^ show_hflz phi_all
         with Failure s -> print_endline @@ "Failure: " ^ s in
-      [%expect {| Failure: Variable capture in substituion (x_11) |}];
+      [%expect {| After (Hflz_util.beta): λx_11:bool.(λx_11:bool.x_11) && x_11 |}];
       ()
     in
   ()

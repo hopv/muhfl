@@ -389,13 +389,13 @@ let%expect_test "InlineExpansition.optimize" =
   [%expect {|
     {fix: Fixpoint.Greatest
     var: (x_100100 : int -> bool)
-    body: λx_101101:int.x_100100 2 && x_400400 3 || x_100100 2 && x_400400 3}
+    body: λx_1016:int.x_100100 2 && x_400400 3 || x_100100 2 && x_400400 3}
     {fix: Fixpoint.Greatest
     var: (x_300300 : int -> bool)
-    body: λx_301301:int.x_400400 x_301301}
+    body: λx_3014:int.x_400400 x_3014}
     {fix: Fixpoint.Greatest
     var: (x_400400 : int -> bool)
-    body: λx_401401:int.x_401401 = 5 && x_300300 6} |}]
+    body: λx_4013:int.x_4013 = 5 && x_300300 6} |}]
 
 let eliminate_unreachable_predicates (hes : 'a Hflz.hes) : 'a Hflz.hes =
   let rules = Hflz_util.merge_entry_rule hes in
