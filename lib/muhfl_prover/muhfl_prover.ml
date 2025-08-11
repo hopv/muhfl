@@ -92,7 +92,7 @@ type extra_status =
   | ExStatusTractable
   
 module type BackendSolver = sig
-  val run : options -> debug_context -> Hfl.Type.simple_ty Hflz.hes -> bool -> bool -> bool -> bool -> (Status.t * extra_status option) Deferred.t
+  val run : options -> debug_context -> Hfl.Type.simple_ty Hflz.hes -> bool -> bool -> bool -> (Status.t * extra_status option) Deferred.t
 end
 
 module FptProverRecLimitSolver : BackendSolver = struct
@@ -101,7 +101,7 @@ module FptProverRecLimitSolver : BackendSolver = struct
     | None -> failwith "Please set environment variable `first_order_solver_path`"
     | Some s -> s
   
-  let run option _debug_context (hes : 'a Hflz.hes) with_par _ _ _ =
+  let run option _debug_context (hes : 'a Hflz.hes) with_par _will_try_weak_subtype _rethfl_remove_disjunction =
     let solver_path = get_first_order_solver_path () in
     let debug_output =
       match option.log_level with
@@ -322,7 +322,7 @@ module MochiSolver : BackendSolver = struct
         Status.Fail, None
     )
     
-  let run solve_options (debug_context: debug_context) hes _ _ _ _ =
+  let run solve_options (debug_context: debug_context) hes _with_par _will_try_weak_subtype  _rethfl_remove_disjunction =
     save_hes_to_file hes debug_context.mode debug_context solve_options.no_temp_files
     >>= (fun path ->
       let debug_context = { debug_context with temp_file = path } in
@@ -460,11 +460,11 @@ module KatsuraSolver : BackendSolver = struct
       end
     )
     
-  let run solve_options (debug_context: debug_context) hes _ stop_if_intractable will_try_weak_subtype stop_if_tractable =
+  let run solve_options (debug_context: debug_context) hes _with_par will_try_weak_subtype rethfl_remove_disjunction =
     save_hes_to_file hes (if debug_context.mode = "prover" && solve_options.approx_parameter.add_arg_coe1 <> 0 && solve_options.approx_parameter.lexico_pair_number = 1 then solve_options.replacer else "") debug_context solve_options.with_usage_analysis solve_options.with_partial_analysis solve_options.no_temp_files
     >>= (fun path ->
       let debug_context = { debug_context with temp_file = path } in
-      let command = solver_command path solve_options will_try_weak_subtype true (* remove_disjunction  *) in
+      let command = solver_command path solve_options will_try_weak_subtype rethfl_remove_disjunction in
       if solve_options.dry_run then failwith @@ "DRY RUN (" ^ show_debug_context debug_context ^ ") / command: " ^ (Array.to_list command |> String.concat " ");
       run_command_with_timeout solve_options.timeout command (Some debug_context.mode) >>|
         (fun (status_code, elapsed, stdout, stderr) ->
@@ -528,7 +528,7 @@ module IwayamaSolver : BackendSolver = struct
         | Not_found -> failwith @@ "not matched"
     )
   
-  let run solve_options debug_context hes _ _ _ _ =
+  let run solve_options debug_context hes _with_par _will_try_weak_subtype  _rethfl_remove_disjunction =
     let path = save_hes_to_file hes debug_context solve_options.no_temp_files in
     let debug_context = { debug_context with temp_file = path } in
     let command = solver_command path solve_options in
@@ -581,7 +581,7 @@ module SuzukiSolver : BackendSolver = struct
         | Not_found -> failwith @@ "not matched"
     )
   
-  let run solve_options debug_context hes _ _ _ _ =
+  let run solve_options debug_context hes _with_par _will_try_weak_subtype _rethfl_remove_disjunction =
     let path = save_hes_to_file hes debug_context solve_options.no_temp_files in
     let debug_context = { debug_context with temp_file = path }  in
     let command = solver_command path solve_options in
@@ -597,7 +597,7 @@ let is_first_order_hes hes =
   |> (fun hes -> Hflz_util.merge_entry_rule hes)
   |> List.for_all (fun { Hflz.var; _} -> Hfl.Type.order var.ty <= 1)
   
-let solve_onlynu_onlyforall solve_options debug_context hes with_par stop_if_intractable will_try_weak_subtype stop_if_tractable =
+let solve_onlynu_onlyforall solve_options debug_context hes with_par will_try_weak_subtype rethfl_remove_disjunction  =
   let run =
     if is_first_order_hes hes && solve_options.first_order_solver = Some FptProverRecLimit then (
       FptProverRecLimitSolver.run
@@ -608,7 +608,7 @@ let solve_onlynu_onlyforall solve_options debug_context hes with_par stop_if_int
       | Suzuki  -> SuzukiSolver.run
       | Mochi -> MochiSolver.run
     ) in
-  run solve_options debug_context hes with_par stop_if_intractable will_try_weak_subtype stop_if_tractable >>| (fun s -> (s, debug_context))
+  run solve_options debug_context hes with_par will_try_weak_subtype rethfl_remove_disjunction >>| (fun s -> (s, debug_context))
 
 let is_nu_only_tractable hes =
   let path = Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~without_id:false true hes in
@@ -962,20 +962,23 @@ let rec mu_elim_solver ?(cached_formula=None) iter_count (solve_options : Solve_
     If one of instantiation of existential variables has returned "valid," then result of current iteration is "valid."
   *)
   let pass_result = (fun ((s, _), d) -> (s, d)) in
-  let (solvers: (Status.t * debug_context) Deferred.t list list) = 
+  let (solvers: (Status.t * debug_context) Deferred.t list list) =
+    let remove_disjunction = solve_options.remove_disjunctions || solve_options.only_remove_disjunctions in
+    let debug_context_ = {debug_context_ with remove_disjunctions = remove_disjunction} in
     match solve_options.backend_solver with
     | None ->
       List.map (fun (nu_only_hes, exists_assignment, hflz_info) ->
         let debug_context_ = {debug_context_ with hflz_info} in
+        let hoice = if remove_disjunction then "hoice_rd" else "hoice" in
+        let z3 =  if remove_disjunction then "z3_rd" else "z3" in
         [
           solve_onlynu_onlyforall
             { solve_options with backend_solver = Some "hoice" }
-            ({ debug_context_ with backend_solver = Some "hoice"; solved_by = "hoice"; exists_assignment = Some exists_assignment })
+            ({ debug_context_ with backend_solver = Some "hoice"; solved_by = hoice; exists_assignment = Some exists_assignment })
             nu_only_hes
             false
-            (if solve_options.only_remove_disjunctions then (* do not solve echc *) true else false)
             false
-            false
+            remove_disjunction
           >>| (fun ((s, ex), d) ->
             match ex with
             | Some ExStatusIntractable -> (s, {d with solved_by = "pcsat"})
@@ -983,23 +986,21 @@ let rec mu_elim_solver ?(cached_formula=None) iter_count (solve_options : Solve_
           );
           solve_onlynu_onlyforall
             { solve_options with backend_solver = Some "z3" }
-            ({ debug_context_ with backend_solver = Some "z3"; solved_by = "z3"; exists_assignment = Some exists_assignment })
+            ({ debug_context_ with backend_solver = Some "z3"; solved_by = z3; exists_assignment = Some exists_assignment })
             nu_only_hes
             false
-            true (* if the formula is intractable in katsura-solver, stop either of the two solving processes to save computational resources *)
             false
-            false
+            remove_disjunction
           >>| pass_result
         ]
         @ (if solve_options.try_weak_subtype then [
           solve_onlynu_onlyforall
             { solve_options with backend_solver = Some "hoice" }
-            ({ debug_context_ with backend_solver = Some "hoice"; solved_by = "hoice_weak_subtype"; exists_assignment = Some exists_assignment })
+            ({ debug_context_ with backend_solver = Some "hoice"; solved_by = hoice ^ "_weak_subtype"; exists_assignment = Some exists_assignment })
             nu_only_hes
             false
             true
-            true
-            false
+            remove_disjunction
           >>| pass_result
           >>| (fun (s, d) ->
             match s with
@@ -1008,12 +1009,11 @@ let rec mu_elim_solver ?(cached_formula=None) iter_count (solve_options : Solve_
           );
           solve_onlynu_onlyforall
             { solve_options with backend_solver = Some "z3" }
-            ({ debug_context_ with backend_solver = Some "z3"; solved_by = "z3_weak_subtype"; exists_assignment = Some exists_assignment })
+            ({ debug_context_ with backend_solver = Some "z3"; solved_by = z3 ^ "_weak_subtype"; exists_assignment = Some exists_assignment })
             nu_only_hes
             false
             true
-            true
-            false
+            remove_disjunction
           >>| pass_result
           >>| (fun (s, d) ->
             match s with
@@ -1021,15 +1021,15 @@ let rec mu_elim_solver ?(cached_formula=None) iter_count (solve_options : Solve_
             | _ -> (s, d)
           )
         ] else [])
-        @ (if solve_options.remove_disjunctions || solve_options.only_remove_disjunctions then [
+        (* try both remove_disjunction and ECHC (i.e. pc sat)*)
+        @ (if solve_options.remove_disjunctions && not solve_options.only_remove_disjunctions then [
           solve_onlynu_onlyforall
             { solve_options with backend_solver = Some "hoice" }
-            ({ debug_context_ with backend_solver = Some "hoice"; solved_by = "hoice_rd"; exists_assignment = Some exists_assignment; remove_disjunctions = solve_options.remove_disjunctions })
+            ({ debug_context_ with backend_solver = Some "hoice"; solved_by = "hoice"; exists_assignment = Some exists_assignment; remove_disjunctions = solve_options.remove_disjunctions })
             nu_only_hes
             false
             false
             false
-            true
           >>| pass_result
           >>| (fun (s, d) ->
             match s with
@@ -1039,12 +1039,11 @@ let rec mu_elim_solver ?(cached_formula=None) iter_count (solve_options : Solve_
           );
           solve_onlynu_onlyforall
             { solve_options with backend_solver = Some "z3" }
-            ({ debug_context_ with backend_solver = Some "z3"; solved_by = "z3_rd"; exists_assignment = Some exists_assignment; remove_disjunctions = solve_options.remove_disjunctions })
+            ({ debug_context_ with backend_solver = Some "z3"; solved_by = "z3"; exists_assignment = Some exists_assignment; remove_disjunctions = solve_options.remove_disjunctions })
             nu_only_hes
             false
             false
             false
-            true
           >>| pass_result
           >>| (fun (s, d) ->
             match s with
@@ -1052,10 +1051,10 @@ let rec mu_elim_solver ?(cached_formula=None) iter_count (solve_options : Solve_
               if solve_options.only_remove_disjunctions then (s, d) else Status.Fail, d
             | _ -> (s, d)
           )
-        ] else [])
+            ] else [])
       ) nu_only_heses
-    | Some _ ->
-      List.map (fun (nu_only_hes, _, hflz_info) -> [solve_onlynu_onlyforall solve_options {debug_context_ with hflz_info} nu_only_hes false false false false >>| pass_result]) nu_only_heses in
+    | Some _ -> (*TODO: Why is this ignored??? *)
+      List.map (fun (nu_only_hes, _, hflz_info) -> [solve_onlynu_onlyforall solve_options {debug_context_ with hflz_info} nu_only_hes false false remove_disjunction >>| pass_result]) nu_only_heses in
   let (is_valid : (Status.t * debug_context list) list Ivar.t) = Ivar.create () in
   let deferred_is_valid = Ivar.read is_valid in
   let (deferred_all : (Status.t * debug_context list) list Deferred.t) =
