@@ -1,8 +1,10 @@
 open Hfl
 
-(* TODO clean this up *)
 module M = struct
+  include IdMap
+
   let init = IdMap.singleton
+
   let merge_either =
       fun m1 m2 ->
         let dup = ref None in
@@ -27,16 +29,12 @@ module M = struct
         match merge_either m1 m2 with
         | First r -> r
         | Second (key, _, _) -> invalid_arg @@ "merge: " ^ Core.string_of_sexp (Id.sexp_of_t Core.sexp_of_unit key)
+
   let rec merges = function
     | [] -> failwith "merges"
     | [x] -> x
     | x::xs -> merge x (merges xs)
-  let add = IdMap.add
-  let find = IdMap.find
-  let lookup = IdMap.lookup
-  let remove = IdMap.remove
-  let map = IdMap.map
-  let empty = IdMap.empty
+
   let to_list x = Base.Map.fold x ~init:[] ~f:(fun ~key:k ~data:v acc -> (k, v)::acc)  |> List.rev
 end
 
