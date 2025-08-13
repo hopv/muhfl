@@ -66,9 +66,6 @@ let parse_file_with_mufu file =
   Log.info begin fun m -> m ~header:"Input" "mufu transformation end" end;
   Log.app begin fun m -> m ~header:"Input" "mufu transformation result: %s" s end;
   Raw_hflz.Typing.to_typed raw
-  (* TODO: Check this *)
- (* |> (fun (e, rules) -> e, List.map ~f:Raw_hflz.rename_simple_ty_rule rules)
-  |> Raw_hflz.rename_ty_body *)
   |> Hflz.desugar
 
 let add_top_level_foralls hes =

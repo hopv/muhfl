@@ -170,9 +170,6 @@ let decompose_entry_rule rules = match rules |> Stdlib.List.partition (fun r -> 
   | [e], rules -> mk_hes e.body rules
   | _ -> failwith "decompose_entry_rule"
 
-
-(* TODO: check this *)
-
 let with_rules f hes =
   hes |> merge_entry_rule |> f |> decompose_entry_rule
 

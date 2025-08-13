@@ -19,9 +19,6 @@ end
 
 type hfl = H.raw_hflz
 
-
-
-
 exception StrangeSituation of string
 exception UnsupportedNow of string
 
