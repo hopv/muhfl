@@ -425,18 +425,3 @@ let decompose_ors x phi =
     | None -> None
   end
   | _ -> None
-
-
-let ensure_no_mu_exists (hes : 'a hes) =
-  let rec no_exists = function
-    | Bool _ -> true
-    | Var _  -> true
-    | Or (f1, f2)  -> no_exists f1 && no_exists f2
-    | And (f1, f2) -> no_exists f1 && no_exists f2
-    | Abs (_, f1)  -> no_exists f1
-    | Forall (_, f1) -> no_exists f1
-    | Exists _ -> false
-    | App (f1, f2) -> no_exists f1 && no_exists f2
-    | Arith _ -> true
-    | Pred _ -> true in
-  Base.List.for_all ~f:(fun {body; fix; _} -> fix = Fixpoint.Greatest && no_exists body) (mk_entry_rule (top_formula_of hes) :: (equations_of hes))

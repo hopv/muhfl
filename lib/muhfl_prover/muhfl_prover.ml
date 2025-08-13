@@ -654,14 +654,14 @@ let should_instantiate_exists original_hes z3_path =
   let exists_count_prover = count_exists original_hes in
   let hes_ = Hflz_mani.encode_body_exists coe1 coe2 original_hes Hfl.IdMap.empty [] false in
   let hes_ = Hflz_mani.elim_mu_with_rec hes_ coe1 coe2 lexico_pair_number Hfl.IdMap.empty false [] z3_path in
-  if not @@ Hflz_util.ensure_no_mu_exists hes_ then failwith "elim_mu";
+  if not @@ Hflz.is_nuonly hes_ then failwith "elim_mu";
   is_nu_only_tractable hes_
   >>= (fun t_prover ->
     let dual_hes = Hflz_mani.get_dual_hes original_hes in
     let exists_count_disprover = count_exists dual_hes in
     let dual_hes = Hflz_mani.encode_body_exists coe1 coe2 dual_hes Hfl.IdMap.empty [] false  in
     let dual_hes = Hflz_mani.elim_mu_with_rec dual_hes coe1 coe2 lexico_pair_number Hfl.IdMap.empty false [] z3_path in
-    if not @@ Hflz_util.ensure_no_mu_exists dual_hes then failwith "elim_mu";
+    if not @@ Hflz.is_nuonly dual_hes then failwith "elim_mu";
     is_nu_only_tractable dual_hes
     >>| (fun t_disprover ->
       let should_instantiate =
@@ -786,7 +786,7 @@ let elim_mu_exists solve_options (hes : 'a Hflz.hes) name =
         Log.info begin fun m -> m ~header:("Eliminate Mu (" ^ name ^ ")") "%a" Manipulate.Print_syntax.FptProverHes.hflz_hes' hes end;
         if not solve_options.no_temp_files then
           ignore @@ Manipulate.Print_syntax.FptProverHes.save_hes_to_file ~file:("muapprox_" ^ name ^ "_elim_mu.txt") hes;
-        if not @@ Hflz_util.ensure_no_mu_exists hes then failwith "elim_mu" in
+        if not @@ Hflz.is_nuonly hes then failwith "elim_mu" in
 
       let hes =
         if should_add_arguments then
