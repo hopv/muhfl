@@ -262,7 +262,7 @@ module SolverCommon = struct
       end
       | Error code -> begin
         Status.Unknown, TError,
-        "Error status (" ^ Unix_command.show_code (Error code) ^ ")"
+        "Error status (" ^ Unix_command.show_code (Error code) ^ ")" ^ (show_debug_context debug_context)
       end
     in
     if not no_temp_files then output_post_debug_info tmp_res elapsed stdout stderr debug_context;
