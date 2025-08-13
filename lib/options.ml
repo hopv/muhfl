@@ -63,11 +63,11 @@ type params =
   ; timeout : int [@default 600]
   (** Timeout for a backend solver *)
   
-  ; solver : string [@default "katsura"]
-  (** Choose background nu-only-HFLz solver. Available: katsura, iwayama, suzuki, mochi *)
+  ; solver : string [@default "rethfl"]
+  (** Choose background nu-only-HFLz solver. Available: rethfl, iwayama, suzuki, mochi *)
   
   ; backend_solver : string [@default ""]
-  (** --solver option on the backend solver. (only used in the katsura solver) *)
+  (** --solver option on the backend solver. (only used in the rethfl) *)
   
   ; first_order_solver : bool [@default false]
   (** If true, use z3 or hoice to solve first-order formulas. If empty (or default), always use a solver for higher-order formulas. *)
@@ -121,7 +121,7 @@ type params =
   (** (old option) Use all variables (not only variables which are occured in arguments of application) to guess a recursion bound to approximate least-fixpoints. (This may (or may not) help Hoice.) *)
   
   ; replacer : string [@default ""]
-  (** (old option) Ad-hoc replacement of approximated forumula (for katsura-solver only) *)
+  (** (old option) Ad-hoc replacement of approximated forumula (for rethfl only) *)
   
   ; auto_existential_quantifier_instantiation : bool [@default false]
   (** Instantiate existential quantifiers even if instantiation seems to be effective *)
