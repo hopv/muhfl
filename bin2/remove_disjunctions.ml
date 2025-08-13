@@ -11,7 +11,7 @@ let map_file_path path converter =
 
 let main path1 = 
   let phi1 = Muhfl.parse path1 in
-  let phi1' = Muhfl.remove_disjunctions phi1 in
+  let phi1' = Hfl.Trans.RemoveDisjunction.f phi1 in
   let path2 = map_file_path path1 (fun (a, b, c) -> (a, b ^ "_conv", c)) in
   ignore @@ Muhfl.Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~file:path2 ~without_id:true true phi1';
   print_endline @@ "saved to " ^ path2

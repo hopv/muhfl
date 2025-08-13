@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 open Hflz
 
 type variable_type =
@@ -15,7 +15,7 @@ let show_variable_type t =
   | VTVarMax a -> "VTVarMax (" ^ Hflmc2_util.show_list ~sep:"; " (fun a -> Print_syntax.show_hflz (Arith a)) a ^ ")"
 
 let lift_id id =
-  { id with Id.ty = Type.TySigma id.Id.ty}
+  { id with Hfl.Id.ty = Type.TySigma id.Id.ty}
 
 let unlift_id id =
   { id with Id.ty = Type.unsafe_unlift id.Id.ty}
@@ -26,14 +26,14 @@ let get_dependency_graph (hes : 'a hes_rule list) =
   let graph = Mygraph.init graph_size in
   (* 参照の依存グラフを作成 *)
   List.iteri
-    (fun index {body; _} -> 
+    (fun index {body; _} ->
       fvs body
       |> IdSet.to_list
       |> List.filter_map
         (fun v ->
           List.find_opt (fun (_, v') -> Id.eq v' v) preds
         )
-      |> List.iter (fun (i', _) -> 
+      |> List.iter (fun (i', _) ->
         Mygraph.add_edge index i' graph
       )
     )
@@ -76,7 +76,7 @@ let get_hflz_type phi =
         | TyInt -> (match f2 with Arith _ -> () | _ -> failwith @@ "Illegal type (App, Arrow) (ty1=TyInt, ty2=(not integet expression)) (expression: " ^ show_hflz phi ^ ")")
         | TySigma t -> (
           let sty2 = go f2 in
-          if not @@ eq_modulo_arg_ids t sty2 then (
+          if not @@ Type.equal_simple_ty t sty2 then (
             failwith @@ "Type assertion failed (ty1=" ^ show_simple_ty t ^ ", ty2=" ^ show_simple_ty sty2 ^ ")"
           )
         )
@@ -84,15 +84,13 @@ let get_hflz_type phi =
         ty1'
       end
       | _ -> failwith "Illegal type (App)"
-      
+
     end
     | Pred _ -> TyBool ()
     | Arith _ -> failwith "Illegal type (Arith)"
   in
   go phi
 
-
-open Hflmc2_syntax
 
 let assign_unique_variable_id_sub id_change_map env phi =
   let to_ty ty = match ty with
@@ -150,7 +148,7 @@ let assign_unique_variable_id (hes : Type.simple_ty Hflz.hes_rule list): Type.si
     List.map (fun {Hflz.var; _} ->
       (Id.remove_ty var, {Id.name = var.name; id = Id.gen_id (); ty = Type.TySigma (var.Id.ty)})
     ) hes in
-  
+
   let hes =
     List.map (fun {Hflz.var; body; fix} ->
       let body = assign_unique_variable_id_sub id_change_map global_env body in
@@ -165,16 +163,23 @@ let assign_unique_variable_id (hes : Type.simple_ty Hflz.hes_rule list): Type.si
   let id_change_map = global_env @ List.rev !id_change_map in
   hes, id_change_map
 
+let dummy_entry_name = "MAIN__"
+let mk_entry_rule body = {var=Id.gen ~name:dummy_entry_name (Type.TyBool ()); fix=Fixpoint.Greatest; body=body }
+let merge_entry_rule hes = (hes |> top_formula_of |> mk_entry_rule) :: (equations_of hes)
+let decompose_entry_rule rules = match rules |> Stdlib.List.partition (fun r -> r.var.name = dummy_entry_name) with
+  | [e], rules -> mk_hes e.body rules
+  | _ -> failwith "decompose_entry_rule"
 
-let with_rules f hes = hes |> merge_entry_rule |> f |> decompose_entry_rule
+let with_rules f hes =
+  hes |> merge_entry_rule |> f |> decompose_entry_rule
 
 let beta_id_type_map id_type_map x phi2 =
-  IdMap.map 
+  IdMap.map
     id_type_map
     ~f:(function
       | VTVarMax vs -> begin
         let xs =
-          List.map  
+          List.map
             (fun v ->
               match Trans.Subst.Hflz.hflz (IdMap.of_list [x, phi2]) (Arith v) with
               | Arith v' -> begin
@@ -202,6 +207,21 @@ let beta_id_type_map id_type_map x phi2 =
         ) in
         VTHigherInfo x_xs
     )
+
+let fvs_with_type : 'ty t -> 'ty Type.arg Id.t list = fun hes ->
+  let rec go = function
+    | Var x          -> [{ x with ty = Type.TySigma x.ty}]
+    | Bool _         -> []
+    | Or (phi1,phi2) -> (go phi1) @ (go phi2)
+    | And(phi1,phi2) -> (go phi1) @ (go phi2)
+    | App(phi1,phi2) -> (go phi1) @ (go phi2)
+    | Abs(x, phi)    -> List.filter (fun t -> not @@ Id.eq t x) @@ go phi(* listだと、ここが毎回線形時間になる... *)
+    | Forall(x, phi) -> List.filter (fun t -> not @@ Id.eq t x) @@ go phi
+    | Exists(x, phi) -> List.filter (fun t -> not @@ Id.eq t x) @@ go phi
+    | Arith a        -> List.map (fun id -> {id with Id.ty = Type.TyInt}) @@ Arith.fvs a
+    | Pred (_, as')   -> as' |> List.map (fun a -> Arith.fvs a |> List.map (fun id -> {id with Id.ty = Type.TyInt})) |> List.flatten in
+  go hes |> Hflmc2_util.remove_duplicates (fun e x -> Id.eq e x) |> Base.List.sort ~compare:(fun a b -> Int.compare a.Hfl.Id.id b.id)
+
 
 let rec beta id_type_map (phi : 'a Hflz.t) : ('b * 'a Hflz.t ) =
   match phi with
@@ -246,7 +266,7 @@ let rec beta id_type_map (phi : 'a Hflz.t) : ('b * 'a Hflz.t ) =
       (* Log.info begin fun m -> m ~header:"not done" "%a" Print.(hflz simple_ty_) (App (phi1, phi2)) end; *)
       id_type_map, App (phi1, phi2))
   end
-  | Abs(x, phi) ->  
+  | Abs(x, phi) ->
     let id_type_map, phi = beta id_type_map phi in
     id_type_map, Abs(x, phi)
   | Forall (x, phi) ->
@@ -257,7 +277,7 @@ let rec beta id_type_map (phi : 'a Hflz.t) : ('b * 'a Hflz.t ) =
     id_type_map, Exists (x, phi)
   | Bool _ | Var _ | Arith _ | Pred _ -> id_type_map, phi
 
-let update_id_type_map (id_type_map : (unit Id.t, variable_type, IdMap.Key.comparator_witness) Base.Map.t) (id_change_map : (unit Id.t * Type.simple_ty Type.arg Id.t) list) =
+let update_id_type_map (id_type_map : (unit Id.t, variable_type, Id.Key.comparator_witness) Base.Map.t) (id_change_map : (unit Id.t * Type.simple_ty Type.arg Id.t) list) =
   (* id -> [id] というmap *)
   (* id_change_map のキーは重複がある可能性がある（元々IDが重複していた変数があった場合）。最も左のキー（関数環境, 外側の変数 -> 内側の変数の順になっている）を使う *)
   let update_id id =
@@ -266,7 +286,7 @@ let update_id_type_map (id_type_map : (unit Id.t, variable_type, IdMap.Key.compa
     | None -> None (* instantiate-exists で変数が消去された場合 *)
   in
   let m =
-    IdMap.fold
+    Base.Map.fold
       id_type_map
       ~init:IdMap.empty
       ~f:(fun ~key ~data m ->
@@ -313,7 +333,7 @@ let update_id_type_map (id_type_map : (unit Id.t, variable_type, IdMap.Key.compa
               VTHigherInfo x_xs
             end
           in
-          if IdMap.mem m (Id.remove_ty key) then (
+          if Base.Map.mem m (Id.remove_ty key) then (
             print_endline @@ "already exists: " ^ Id.to_string key;
             m
           ) else
@@ -362,7 +382,7 @@ let get_hflz_size_sub phi =
 let get_hflz_size hes =
   let sum = List.fold_left (fun acc e -> acc + e) 0 in
   hes
-  |> Hflz.merge_entry_rule
+  |> merge_entry_rule
   |> List.map (fun {body;_} -> get_hflz_size_sub body)
   |> sum
 
@@ -377,8 +397,8 @@ let extract_bound_predicates x phi =
       match a with
       | Int _ -> Some a
       | Op (Add, [Op (Mult, [n; f]); Int _]) | Op (Add, [Int _; Op (Mult, [n; f])]) -> begin
-        if IdSet.is_empty (Hflz.fvs (Arith n)) &&
-            (not @@ IdSet.exists ~f:(Id.eq x) (Hflz.fvs (Arith f))) then
+        if Base.Set.is_empty (Hflz.fvs (Arith n)) &&
+            (not @@ Base.Set.exists ~f:(Id.eq x) (Hflz.fvs (Arith f))) then
           Some a
         else None
       end
@@ -397,7 +417,7 @@ let decompose_ors x phi =
     match preds with
     | Some preds ->
       let _, body = beta IdMap.empty body in
-      if (not @@ IdSet.exists ~f:(Id.eq x) (Hflz.fvs body)) then Some (preds, body)
+      if (not @@ Base.Set.exists ~f:(Id.eq x) (Hflz.fvs body)) then Some (preds, body)
       else None
     | None -> None
   end

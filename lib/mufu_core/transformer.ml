@@ -1,6 +1,5 @@
-open Hflmc2_syntax
+open Hfl
    
-module H = Raw_hflz
 module F = Formula
 module A = Arith
 
@@ -10,6 +9,13 @@ module U = MatchMaker
          
 module D = Map.Make(String)
 module AP = ArithmeticProcessor
+
+module H =
+struct
+  include Raw_hflz
+  let mk_and e1 e2 = mk_ands [e1; e2]
+  let mk_or e1 e2 = mk_ors [e1; e2]
+end
 
 type hfl = H.raw_hflz
 

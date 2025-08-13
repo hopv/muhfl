@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 module H = Raw_hflz
 module A = Arith
 module F = Formula

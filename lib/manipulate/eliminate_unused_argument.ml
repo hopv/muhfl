@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 open Eliminate_unused_argument_util
 
 (* elimination of unused arguments is based on "Type-Based Useless Variable Elimination, PEPM00" *)
@@ -30,13 +30,13 @@ let get_occurring_integer_variables (phi : Type.simple_ty thflz) =
   go phi
 
 let update_id_map map id cond =
-  IdMap.update map id ~f:(fun v  -> match v with
+  Base.Map.update map id ~f:(fun v  -> match v with
     | Some v -> cond @ v
     | None -> cond
   )
 
 let merge_with_update_id_map m1 m2 =
-  IdMap.merge m1 m2
+  Base.Map.merge m1 m2
     ~f:begin fun ~key:_key -> function
     | `Left x -> Some x
     | `Right x -> Some x
@@ -251,10 +251,10 @@ let replace_erasable_subtrees (rules : Type.simple_ty thes_rule list) elasables 
       Var (id, { name = dummy_unit_var_name; id = -1; ty = Type.TyBool () } )
     end
     | None -> begin
-      let m = IdMap.filter synonyms ~f:(fun ls -> List.exists (fun v' -> Id.eq v' id) ls) in
-      if IdMap.length m > 0 then begin
-        assert (IdMap.length m = 1);
-        let (id', _) = IdMap.nth_exn m 0 in
+      let m = Base.Map.filter synonyms ~f:(fun ls -> List.exists (fun v' -> Id.eq v' id) ls) in
+      if Base.Map.length m > 0 then begin
+        assert (Base.Map.length m = 1);
+        let (id', _) = Base.Map.nth_exn m 0 in
         match List.find_opt (fun v -> Id.eq v id') elasables with
         | Some _ -> begin
           used := id :: !used;
@@ -308,7 +308,7 @@ let replace_erasable_subtrees (rules : Type.simple_ty thes_rule list) elasables 
   
 
 let eliminate_unused_argument ?(id_type_map = IdMap.empty) (hes : Type.simple_ty Hflz.hes) =
-  let rules = Hflz.merge_entry_rule hes in
+  let rules = Hflz_util.merge_entry_rule hes in
   let rules, id_change_map = Hflz_util.assign_unique_variable_id rules in
   let id_type_map = Hflz_util.update_id_type_map id_type_map id_change_map in
   (* let () =
@@ -329,7 +329,7 @@ let eliminate_unused_argument ?(id_type_map = IdMap.empty) (hes : Type.simple_ty
   print_endline @@ show_constraints constraints;
   print_endline @@ Hflmc2_util.show_pairs show_ctype show_ctype unified; *)
   let rules = remove_id_form_subterm rules in
-  let hes = Type_hflz.infer_and_eliminate_unit_type_terms (Hflz.decompose_entry_rule rules) in
+  let hes = Type_hflz.infer_and_eliminate_unit_type_terms (Hflz_util.decompose_entry_rule rules) in
   (* let () =
     let hes = abbrev_variable_names hes in
     ignore @@ Print_syntax.MachineReadable.save_hes_to_file ~file:"bb_elim.txt" ~without_id:true true hes

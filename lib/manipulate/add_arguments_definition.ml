@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 
 let simplified_type = ref false
 let output_debug_info = ref false
@@ -24,13 +24,13 @@ type 'ty thflz =
   | Pred   of Formula.pred * 'ty tarith list
   [@@deriving eq,ord,show]
 
-type use_flag = TUse | TNotUse | EFVar of unit Hflmc2_syntax.Id.t
+type use_flag = TUse | TNotUse | EFVar of unit Id.t
 [@@deriving eq,ord,show]
 
 type fixpoint = Least | Greatest
 [@@deriving eq,ord,show]
 
-type ptype = TInt | TBool | TFunc of ptype * ptype * use_flag | TVar of unit Hflmc2_syntax.Id.t
+type ptype = TInt | TBool | TFunc of ptype * ptype * use_flag | TVar of unit Id.t
 [@@deriving eq,ord,show]
 
 type 'a in_out = {inner_ty: 'a; outer_ty: 'a}
@@ -77,7 +77,7 @@ let show_tag_as_separator = ref true
 let show_use_flag = function
   | TUse -> if !show_tag_as_separator then "|" else "T"
   | TNotUse -> "_"
-  | EFVar id -> Hflmc2_syntax.Id.to_string id
+  | EFVar id -> Id.to_string id
 
 let rec pp_ptype prec ppf ty =
   if !simplified_type then begin
@@ -125,7 +125,7 @@ let get_args phi =
   go phi
 
 module Print_temp = struct
-  open Hflmc2_syntax.Print
+  open Hfl.Print
 
   let rec gen_arith_ : 'avar t_with_prec -> 'pty tarith t_with_prec =
     fun avar_ prec ppf a ->

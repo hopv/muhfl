@@ -3,7 +3,7 @@ let%expect_test "beta" =
   let open Hflz_typecheck in
   let open Hflz in
   let open Type in
-  let open Hflmc2_syntax in
+  let open Hfl in
   let open Print_syntax in
   ignore @@ Id.gen_id () + Id.gen_id () + Id.gen_id () + Id.gen_id () + Id.gen_id () + Id.gen_id ();
   (* print_endline @@ string_of_int @@ Id.gen_id (); *)
@@ -30,7 +30,7 @@ let%expect_test "beta" =
     let () =
       let phi_all = Trans.Reduce.Hflz.beta phi_all_original in
       print_endline @@ "After (Trans.Reduce.Hflz.beta): " ^ show_hflz phi_all;
-      [%expect {| After (Trans.Reduce.Hflz.beta): false && (λx_11:bool.x_11) |}] in
+      [%expect {| After (Trans.Reduce.Hflz.beta): false && (λx_115:bool.x_115) |}] in
     
     let () =
       let _, phi_all = Hflz_util.beta IdMap.empty phi_all_original in 
@@ -67,12 +67,12 @@ let%expect_test "beta" =
       let () =
         let phi_all = Trans.Reduce.Hflz.beta phi_all_original in
         print_endline @@ "After (Trans.Reduce.Hflz.beta): " ^ show_hflz phi_all;
-        [%expect {| After (Trans.Reduce.Hflz.beta): λx_22:bool.(λx_27:bool.x_27) && x_22 |}] in
+        [%expect {| After (Trans.Reduce.Hflz.beta): λx_223:bool.(λx_226:bool.x_226) && x_223 |}] in
       
       let () =
         let _, phi_all = Hflz_util.beta IdMap.empty phi_all_original in
         print_endline @@ "After (Hflz_util.beta): " ^ show_hflz phi_all;
-        [%expect {| After (Hflz_util.beta): λx_22:bool.(λx_28:bool.x_28) && x_22 |}] in
+        [%expect {| After (Hflz_util.beta): λx_22:bool.(λx_22:bool.x_22) && x_22 |}] in
       () 
   in
   print_endline "";
@@ -106,14 +106,14 @@ let%expect_test "beta" =
           let phi_all = Trans.Reduce.Hflz.beta phi_all_original in
           print_endline @@ "After (Trans.Reduce.Hflz.beta): " ^ show_hflz phi_all
         with Failure s -> print_endline @@ "Failure: " ^ s in
-      [%expect {| Failure: Variable capture in substituion (x_11) |}];
+      [%expect {| After (Trans.Reduce.Hflz.beta): λx_127:bool.(λx_137:bool.x_127) && x_127 |}];
       
       let () =
         try
           let _, phi_all = Hflz_util.beta IdMap.empty phi_all_original in 
           print_endline @@ "After (Hflz_util.beta): " ^ show_hflz phi_all
         with Failure s -> print_endline @@ "Failure: " ^ s in
-      [%expect {| Failure: Variable capture in substituion (x_11) |}];
+      [%expect {| After (Hflz_util.beta): λx_11:bool.(λx_11:bool.x_11) && x_11 |}];
       ()
     in
   ()
@@ -125,6 +125,7 @@ module Util = Hflmc2_util
 
 let%expect_test "desugar_formula" =
   let open Type in
+  let id_n n t = { Id.name = "x_" ^ string_of_int n; id = n; ty = t } in
   let sugar : simple_ty Hflz.Sugar.t =
     (* true && (not (true && ∀x2. 1 >= x2 || ∃x3. not (true && x4 5))) *)
     (* => *)

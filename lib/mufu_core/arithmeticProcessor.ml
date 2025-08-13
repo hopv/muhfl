@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 
 module P = Printer
 module H = Raw_hflz

@@ -1,9 +1,15 @@
-open Hflmc2_syntax
+open Hfl
 
 module P = Printer
-module H = Raw_hflz
 module A = ArithmeticProcessor
 module Z = Z3Interface
+
+module H = struct
+  include Raw_hflz
+  let mk_and e1 e2 = mk_ands [e1; e2]
+  let mk_or e1 e2 = mk_ors [e1; e2]
+  let mk_preds pred bs = Pred(pred, bs)
+end
        
 let counter = ref 0;;
 let newvar () =

@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 
 type 'a elt = 'a Id.t
 type 'a t = 'a elt list

@@ -12,6 +12,7 @@ depends: [
   "core" {>= "v0.16" & < "v0.17"}
   "core_unix" {>= "v0.16" & < "v0.17"}
   "fmt"
+  "hfl"
   "logs"
   "lwt"
   "menhir"
@@ -51,4 +52,5 @@ x-maintenance-intent: ["(latest)"]
 # so it seems like it is better to stick with the OPAM way
 pin-depends: [
   [ "ppx_deriving_cmdliner.dev" "git+https://github.com/hammerlab/ppx_deriving_cmdliner.git#master" ]
+  [ "hfl.0.0.3" "git+https://github.com/hopv/ocaml-hfl#v0.0.3"]
 ]

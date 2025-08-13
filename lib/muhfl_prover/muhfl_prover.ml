@@ -1,8 +1,9 @@
-module Hflz = Hflmc2_syntax.Hflz
-module Fixpoint = Hflmc2_syntax.Fixpoint
+module Hflz = Hfl.Hflz
+module Fixpoint = Hfl.Fixpoint
 module Status = Status
 module Solve_options = Solve_options
 module Hflz_mani = Manipulate.Hflz_manipulate
+module Hflz_util = Manipulate.Hflz_util
 module Check_formula_equality = Manipulate.Check_formula_equality
 module Abbrev_variable_numbers = Manipulate.Abbrev_variable_numbers
 module Mochi_solver = Mochi_solver
@@ -14,8 +15,8 @@ open Unix_command
 let log_src = Logs.Src.create "Solver"
 module Log = (val Logs.src_log @@ log_src)
 
-let log_string = Manipulate.Hflz_util.log_string Log.info
-let message_string = Manipulate.Hflz_util.log_string Log.app
+let log_string = Hflz_util.log_string Log.info
+let message_string = Hflz_util.log_string Log.app
 
 type hflz_info_sub = {
   hflz_size: int;
@@ -43,7 +44,7 @@ type debug_context = {
   solved_by: string;
   backend_solver: string option;
   default_lexicographic_order: int;
-  exists_assignment: (unit Hflmc2_syntax.Id.t * int) list option;
+  exists_assignment: (unit Hfl.Id.t * int) list option;
   hflz_info: hflz_info;
   elapsed_all: float;
   will_try_weak_subtype: bool;
@@ -68,7 +69,7 @@ let show_debug_context debug =
     ("add_arg_coe1", if debug.add_arg_coe1 = 0 then "-" else soi debug.add_arg_coe1);
     ("add_arg_coe2", if debug.add_arg_coe1 = 0 then "-" else soi debug.add_arg_coe2);
     ("default_lexicographic_order", string_of_int debug.default_lexicographic_order);
-    ("exists_assignment", Option.map (fun m -> "[" ^ ((List.map (fun (id, v) -> id.Hflmc2_syntax.Id.name ^ "=" ^ string_of_int v) m) |> String.concat "; ") ^ "]") debug.exists_assignment |> unwrap_or "-");
+    ("exists_assignment", Option.map (fun m -> "[" ^ ((List.map (fun (id, v) -> id.Hfl.Id.name ^ "=" ^ string_of_int v) m) |> String.concat "; ") ^ "]") debug.exists_assignment |> unwrap_or "-");
     ("t_count", soi debug.hflz_info.t_count);
     ("s_count", soi debug.hflz_info.s_count);
     ("elapsed_all", string_of_float debug.elapsed_all);
@@ -91,7 +92,7 @@ type extra_status =
   | ExStatusTractable
   
 module type BackendSolver = sig
-  val run : options -> debug_context -> Hflmc2_syntax.Type.simple_ty Hflz.hes -> bool -> bool -> bool -> bool -> (Status.t * extra_status option) Deferred.t
+  val run : options -> debug_context -> Hfl.Type.simple_ty Hflz.hes -> bool -> bool -> bool -> bool -> (Status.t * extra_status option) Deferred.t
 end
 
 module FptProverRecLimitSolver : BackendSolver = struct
@@ -549,7 +550,8 @@ module SuzukiSolver : BackendSolver = struct
     | Some s -> s
   
   let save_hes_to_file hes debug_context no_temp_files =
-    Hflmc2_syntax.Print.global_not_output_zero_minus_as_negative_value := true;
+    (* TODO: retrieve this? *)
+    (*  Hflmc2_syntax.Print.global_not_output_zero_minus_as_negative_value := true; *)
     let hes = Manipulate.Hflz_manipulate.encode_body_forall_except_top hes in
     let path = Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~without_id:false false hes in
     output_pre_debug_info hes debug_context path no_temp_files;
@@ -592,16 +594,10 @@ module SuzukiSolver : BackendSolver = struct
           with _ -> Status.Unknown, None)
 end
 
-let rec is_first_order_function_type (ty : Hflmc2_syntax.Type.simple_ty) =
-  match ty with
-  | TyBool () -> true
-  | TyArrow (ty1, ty2) -> 
-    ty1.ty = TyInt && is_first_order_function_type ty2
-  
 let is_first_order_hes hes =
   Hflz_mani.decompose_lambdas_hes hes
-  |> (fun hes -> Hflz.merge_entry_rule hes)
-  |> List.for_all (fun { Hflz.var; _} -> is_first_order_function_type var.ty)
+  |> (fun hes -> Hflz_util.merge_entry_rule hes)
+  |> List.for_all (fun { Hflz.var; _} -> Hfl.Type.order var.ty <= 1)
   
 let solve_onlynu_onlyforall solve_options debug_context hes with_par stop_if_intractable will_try_weak_subtype stop_if_tractable =
   let run =
@@ -615,37 +611,6 @@ let solve_onlynu_onlyforall solve_options debug_context hes with_par stop_if_int
       | Mochi -> MochiSolver.run
     ) in
   run solve_options debug_context hes with_par stop_if_intractable will_try_weak_subtype stop_if_tractable >>| (fun s -> (s, debug_context))
-  
-let fold_hflz folder phi init =
-  let rec go phi acc = match phi with
-    | Hflz.Bool   _ -> folder acc phi 
-    | Hflz.Var    _ -> folder acc phi
-    | Hflz.Or (f1, f2)  -> folder acc phi |> go f1 |> go f2
-    | Hflz.And (f1, f2) -> folder acc phi |> go f1 |> go f2
-    | Hflz.Abs (_, f1)  -> folder acc phi |> go f1
-    | Hflz.Forall (_, f1) -> folder acc phi |> go f1
-    | Hflz.Exists (_, f1) -> folder acc phi |> go f1
-    | Hflz.App (f1, f2)   -> folder acc phi |> go f1 |> go f2
-    | Hflz.Arith _ -> folder acc phi
-    | Hflz.Pred _ -> folder acc phi in
-  go phi init
-
-let is_onlyforall_body formula =
-  fold_hflz (fun b f -> match f with Hflz.Exists _ -> false | _ -> b) formula true
-let is_onlynu_onlyforall_rule {Hflz.fix; body; _} =
-  (fix = Fixpoint.Greatest) && is_onlyforall_body body
-let is_onlynu_onlyforall (entry, rules) =
-  is_onlyforall_body entry
-  && (List.for_all is_onlynu_onlyforall_rule rules)
-
-let is_onlyexists_body formula =
-  fold_hflz (fun b f -> match f with Hflz.Forall _ -> false | _ -> b) formula true
-let is_onlymu_onlyexists_rule {Hflz.fix; body; _} =
-  (fix = Fixpoint.Least) && is_onlyexists_body body
-let is_onlymu_onlyexists (entry, rules) =
-  is_onlyexists_body entry
-  && (List.for_all is_onlymu_onlyexists_rule rules)
-
 
 let is_nu_only_tractable hes =
   let path = Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~without_id:false true hes in
@@ -667,7 +632,9 @@ let is_nu_only_tractable hes =
     )
   )
 
-let count_exists (entry, rules) =
+let count_exists hes =
+  let entry = Hflz.top_formula_of hes in
+  let rules = Hflz.equations_of hes in
   let rec go phi = match phi with
     | Hflz.Exists (_, p) -> 1 + go p
     | Var _ | Arith _ | Pred _ | Bool _ -> 0
@@ -685,16 +652,16 @@ let should_instantiate_exists original_hes z3_path =
   let coe1, coe2, lexico_pair_number = (1, 1, 1) in
   
   let exists_count_prover = count_exists original_hes in
-  let hes_ = Hflz_mani.encode_body_exists coe1 coe2 original_hes Hflmc2_syntax.IdMap.empty [] false in
-  let hes_ = Hflz_mani.elim_mu_with_rec hes_ coe1 coe2 lexico_pair_number Hflmc2_syntax.IdMap.empty false [] z3_path in
-  if not @@ Hflz.ensure_no_mu_exists hes_ then failwith "elim_mu";
+  let hes_ = Hflz_mani.encode_body_exists coe1 coe2 original_hes Hfl.IdMap.empty [] false in
+  let hes_ = Hflz_mani.elim_mu_with_rec hes_ coe1 coe2 lexico_pair_number Hfl.IdMap.empty false [] z3_path in
+  if not @@ Hflz.is_nuonly hes_ then failwith "elim_mu";
   is_nu_only_tractable hes_
   >>= (fun t_prover ->
     let dual_hes = Hflz_mani.get_dual_hes original_hes in
     let exists_count_disprover = count_exists dual_hes in
-    let dual_hes = Hflz_mani.encode_body_exists coe1 coe2 dual_hes Hflmc2_syntax.IdMap.empty [] false  in
-    let dual_hes = Hflz_mani.elim_mu_with_rec dual_hes coe1 coe2 lexico_pair_number Hflmc2_syntax.IdMap.empty false [] z3_path in
-    if not @@ Hflz.ensure_no_mu_exists dual_hes then failwith "elim_mu";
+    let dual_hes = Hflz_mani.encode_body_exists coe1 coe2 dual_hes Hfl.IdMap.empty [] false  in
+    let dual_hes = Hflz_mani.elim_mu_with_rec dual_hes coe1 coe2 lexico_pair_number Hfl.IdMap.empty false [] z3_path in
+    if not @@ Hflz.is_nuonly dual_hes then failwith "elim_mu";
     is_nu_only_tractable dual_hes
     >>| (fun t_disprover ->
       let should_instantiate =
@@ -706,7 +673,7 @@ let should_instantiate_exists original_hes z3_path =
   )
   
 let count_occuring (*id_type_map:(unit Hflmc2_syntax.Id.t, Manipulate.Hflz_util.variable_type, Hflmc2_syntax.IdMap.Key.comparator_witness) Base.Map.t*) hes s =
-  let open Hflmc2_syntax in
+  let open Hfl in
   (* let ids =
     IdMap.filter id_type_map ~f:(fun ty -> match ty with VTHigherInfo _ -> true | VTVarMax _ -> false) in *)
   let s_len = String.length s in
@@ -728,7 +695,7 @@ let count_occuring (*id_type_map:(unit Hflmc2_syntax.Id.t, Manipulate.Hflz_util.
       c + (go p1)
     | Exists (_, p1) -> go p1
   in
-  Hflz.merge_entry_rule hes
+  Hflz_util.merge_entry_rule hes
   |> List.map
     (fun {Hflz.body; _} ->
       go body
@@ -738,10 +705,10 @@ let count_occuring (*id_type_map:(unit Hflmc2_syntax.Id.t, Manipulate.Hflz_util.
 let get_hflz_info hes =
   let inlined_hes = Manipulate.Hes_optimizer.InlineExpansion.optimize hes in
   {
-    hflz_size = List.length (snd hes);
-    hflz_inlined_size = List.length (snd @@ inlined_hes);
-    hflz_pred_num = Manipulate.Hflz_util.get_hflz_size hes;
-    hflz_inlined_pred_num = Manipulate.Hflz_util.get_hflz_size inlined_hes;
+    hflz_size = List.length (Hflz.equations_of hes);
+    hflz_inlined_size = List.length (Hflz.equations_of inlined_hes);
+    hflz_pred_num = Hflz_util.get_hflz_size hes;
+    hflz_inlined_pred_num = Hflz_util.get_hflz_size inlined_hes;
   }
   
 let elim_mu_exists solve_options (hes : 'a Hflz.hes) name =
@@ -775,7 +742,7 @@ let elim_mu_exists solve_options (hes : 'a Hflz.hes) name =
       if should_add_arguments then
         add_arguments hes
       else
-        hes, Hflmc2_syntax.IdMap.empty, [] in
+        hes, Hfl.IdMap.empty, [] in
     
     let () =
       Log.info begin fun m -> m ~header:("Extra arguments added HES (" ^ name ^ ")") "%a" Manipulate.Print_syntax.FptProverHes.hflz_hes' hes end;
@@ -784,10 +751,9 @@ let elim_mu_exists solve_options (hes : 'a Hflz.hes) name =
       in
     
     let () =
-      let open Hflmc2_syntax in
-      let strs = Hflmc2_syntax.IdMap.fold id_type_map ~init:[] ~f:(fun ~key ~data acc -> (key.Id.name ^ ": " ^ Manipulate.Hflz_util.show_variable_type data) :: acc) in
+      let strs = Base.Map.fold id_type_map ~init:[] ~f:(fun ~key ~data acc -> (key.Hfl.Id.name ^ ": " ^ Hflz_util.show_variable_type data) :: acc) in
       log_string @@ "id_type_map: " ^ Hflmc2_util.show_list (fun s -> s) strs;
-      log_string @@ "id_ho_map: " ^ Hflmc2_util.show_list (fun (t, id) -> "(" ^ t.Id.name ^ ", " ^ id.Id.name ^ ")") id_ho_map
+      log_string @@ "id_ho_map: " ^ Hflmc2_util.show_list (fun (t, id) -> "(" ^ t.Hfl.Id.name ^ ", " ^ id.Hfl.Id.name ^ ")") id_ho_map
       in
     
     let heses, id_type_map =
@@ -799,7 +765,7 @@ let elim_mu_exists solve_options (hes : 'a Hflz.hes) name =
         let id_type_map =
           List.fold_left
             (fun id_type_map (x, integer) ->
-              Manipulate.Hflz_util.beta_id_type_map id_type_map x (Arith (Int integer))
+              Hflz_util.beta_id_type_map id_type_map x (Arith (Int integer))
             )
             id_type_map
             accs in
@@ -820,7 +786,7 @@ let elim_mu_exists solve_options (hes : 'a Hflz.hes) name =
         Log.info begin fun m -> m ~header:("Eliminate Mu (" ^ name ^ ")") "%a" Manipulate.Print_syntax.FptProverHes.hflz_hes' hes end;
         if not solve_options.no_temp_files then
           ignore @@ Manipulate.Print_syntax.FptProverHes.save_hes_to_file ~file:("muapprox_" ^ name ^ "_elim_mu.txt") hes;
-        if not @@ Hflz.ensure_no_mu_exists hes then failwith "elim_mu" in
+        if not @@ Hflz.is_nuonly hes then failwith "elim_mu" in
 
       let hes =
         if should_add_arguments then
@@ -1278,9 +1244,9 @@ let check_validity solve_options (hes : 'a Hflz.hes) cont =
       if solve_options.always_approximate then
         check_validity_full_entry solve_options hes iter_count_offset
       else begin
-        if is_onlynu_onlyforall hes then
+        if Hflz.is_nuonly hes then
           solve_onlynu_onlyforall_with_schedule solve_options hes
-        else if is_onlymu_onlyexists hes then
+        else if Hflz.is_muonly hes then
           solve_onlynu_onlyforall_with_schedule solve_options (Hflz_mani.get_dual_hes hes)
           >>| (fun (status_pair, i) -> (Status.flip status_pair, i))
         else check_validity_full_entry solve_options hes iter_count_offset

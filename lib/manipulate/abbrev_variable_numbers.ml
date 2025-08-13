@@ -1,7 +1,7 @@
-module Hflz = Hflmc2_syntax.Hflz
-module Id = Hflmc2_syntax.Id
-module Type = Hflmc2_syntax.Type
-module Arith = Hflmc2_syntax.Arith
+module Hflz = Hfl.Hflz
+module Id = Hfl.Id
+module Type = Hfl.Type
+module Arith = Hfl.Arith
 
 module Env = struct
   type 'a env_element = {
@@ -91,8 +91,10 @@ let abbrev_variable_numbers (env : 'a Type.arg Env.t) (phi : 'a Hflz.t) =
   go env phi
     
   
-let abbrev_variable_numbers_hes ((entry, rules) : Type.simple_ty Hflz.hes) =
+let abbrev_variable_numbers_hes (hes : Type.simple_ty Hflz.hes) =
   let env = Env.init in
+  let entry = Hflz.top_formula_of hes in
+  let rules = Hflz.equations_of hes in
   let rules, env =
     List.fold_left
       (fun (rules, env) rule ->
@@ -109,8 +111,8 @@ let abbrev_variable_numbers_hes ((entry, rules) : Type.simple_ty Hflz.hes) =
         let body = abbrev_variable_numbers env rule.Hflz.body in
         {rule with body}
       ) rules in
-  Hflz_typecheck.type_check (entry, rules);
-  entry, rules
+  Hflz_typecheck.type_check (Hflz.mk_hes entry rules);
+  Hflz.mk_hes entry rules
 
 (* 
 /*

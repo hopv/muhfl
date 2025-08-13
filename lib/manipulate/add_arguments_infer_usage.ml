@@ -1,4 +1,3 @@
-open Hflmc2_syntax
 module Env = Env_no_value
 
 open Add_arguments_tuple

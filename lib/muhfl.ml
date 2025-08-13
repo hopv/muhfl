@@ -1,5 +1,5 @@
 module Util        = Hflmc2_util
-module Syntax      = Hflmc2_syntax
+module Syntax      = Hfl
 module Manipulate  = Manipulate
 
 open Util
@@ -40,29 +40,37 @@ let report_times () =
 
 let show_result = Muhfl_prover.Status.string_of
 
-let check_predicate_name (_, psi) =
+let check_predicate_name hes =
+  let rules = Hflz.equations_of hes in
   List.iter
-    psi
+    rules
     ~f:(fun {Hflz.var; _} ->
       if var.name ="Sentry" then failwith "You cannot use name \"Sentry\" except the first predicate."
     )
 
+let parse_from_file file =
+  In_channel.with_file file ~f:(fun ch -> Parse.from_channel ~file_name:file ch)
+
+let parse_and_desugar_from_file file =
+  let raw = parse_from_file file in
+  let (hes,a) = Raw_hflz.to_typed (raw, []) in
+  Hflz.desugar hes, a
+
 let parse_file_with_mufu file =
   let open Syntax in
   (* make sure the input formula can be typed *)
-  ignore @@ Syntax.parse_file file;
-  let raw, env = parse_file_to_raw file in
+  ignore @@ parse_and_desugar_from_file file;
+  let raw = parse_from_file file in
   Log.info begin fun m -> m ~header:"Input" "mufu transformation start" end;
-  let raw, s = MuFU_core.transform raw env in
+  let raw, s = MuFU_core.transform raw [] in
   Log.info begin fun m -> m ~header:"Input" "mufu transformation end" end;
   Log.app begin fun m -> m ~header:"Input" "mufu transformation result: %s" s end;
   Raw_hflz.Typing.to_typed raw
-  |> (fun (e, rules) -> e, List.map ~f:Raw_hflz.rename_simple_ty_rule rules)
-  |> Raw_hflz.rename_ty_body
   |> Hflz.desugar
 
 let add_top_level_foralls hes =
-  let entry, rules = hes in
+  let entry = Hflz.top_formula_of hes in
+  let rules = Hflz.equations_of hes in
   let args, entry_body = Hflz.decompose_abs entry in
   let entry =
     List.fold_left
@@ -74,14 +82,14 @@ let add_top_level_foralls hes =
       )
       ~init:entry_body
       args in
-  entry, rules
-  
+  Hflz.mk_hes entry rules
+
 let parse file =
   let psi =
     if !Options.mufu
     then parse_file_with_mufu file
     else begin
-      let psi, _ = Syntax.parse_file file in
+      let psi, _ = parse_and_desugar_from_file file in
       psi
     end in
   let psi = add_top_level_foralls psi in
@@ -179,7 +187,6 @@ let show_debug_context = Muhfl_prover.show_debug_context
 let show_debug_contexts = Muhfl_prover.show_debug_contexts
 let abbrev_variable_numbers_hes = Manipulate.Abbrev_variable_numbers.abbrev_variable_numbers_hes
 let convert_nu_hflz_to_program_with_exception = Muhfl_prover.Mochi_solver.convert_nu_hflz_to_program_with_exception
-let remove_disjunctions = Manipulate.Remove_disjunctions.convert
 let constant_propagation =  Manipulate.Constant_propagation.run
 let simplify_if_condition = Manipulate.Simplify_if_condition.run
 let mufu_transform = MuFU_core.transform

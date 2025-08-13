@@ -1,7 +1,7 @@
-module Hflz = Hflmc2_syntax.Hflz
-module Id = Hflmc2_syntax.Id
-module Type = Hflmc2_syntax.Type
-module Arith = Hflmc2_syntax.Arith
+module Hflz = Hfl.Hflz
+module Id = Hfl.Id
+module Type = Hfl.Type
+module Arith = Hfl.Arith
   
 let find_id_opt key assoc = List.find_opt (fun (k, _) -> Id.eq k key) assoc
 let find_id key assoc = match find_id_opt key assoc with None -> raise Not_found | Some x -> x
@@ -75,7 +75,9 @@ let assign_serial_to_vars_formula body =
     { Id.name = "x" ^ (string_of_int !counter); id = !counter; ty = ty } in
   assign_serial_to_vars gen [] body
 
-let assign_serial_to_vars_hes ((entry, rules) : Type.simple_ty Hflz.hes) =
+let assign_serial_to_vars_hes (hes : Type.simple_ty Hflz.hes) =
+  let entry = Hflz.top_formula_of hes in
+  let rules = Hflz.equations_of hes in
   let counter = ref 0 in
   let gen ty =
     counter := !counter + 1;

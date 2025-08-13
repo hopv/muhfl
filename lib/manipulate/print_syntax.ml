@@ -1,8 +1,7 @@
-module Hflz = Hflmc2_syntax.Hflz
-module Id = Hflmc2_syntax.Id
-module Formula = Hflmc2_syntax.Formula
+module Hflz = Hfl.Hflz
+module Formula = Hfl.Formula
 open Hflz
-open Hflmc2_syntax.Print
+open Hfl.Print
 
 let formula_margin = ref 100
 
@@ -12,10 +11,10 @@ let simple_ty_ = simple_ty_
 let simple_ty = simple_ty
 (* Hflz *)
 
-let print_arg_type (arg_type : Hflmc2_syntax.Type.simple_ty Hflmc2_syntax.Type.arg) = 
+let print_arg_type (arg_type : Hfl.Type.simple_ty Hfl.Type.arg) =
   let go arg_type = match arg_type with
-    | Hflmc2_syntax.Type.TyInt -> print_string "int"
-    | Hflmc2_syntax.Type.TySigma ty -> simple_ty Format.std_formatter (ty);
+    | Hfl.Type.TyInt -> print_string "int"
+    | Hfl.Type.TySigma ty -> simple_ty Format.std_formatter (ty);
   in
   go arg_type;
   print_endline ""
@@ -73,10 +72,10 @@ let hflz_hes_rule : (Prec.t -> 'ty Fmt.t) -> 'ty Hflz.hes_rule Fmt.t =
       (hflz format_ty_) rule.body *)
 
 let hflz_hes : (Prec.t -> 'ty Fmt.t) -> 'ty Hflz.hes Fmt.t =
-  fun format_ty_ ppf (entry, rules) ->
+  fun format_ty_ ppf hes ->
     Fmt.pf ppf "@[<v>@[<2>Sentry =v@ %a.@]@ %a@]"
-      (hflz format_ty_) entry
-      (Fmt.list (hflz_hes_rule format_ty_)) rules
+      (hflz format_ty_) (top_formula_of hes)
+      (Fmt.list (hflz_hes_rule format_ty_)) (equations_of hes)
 
 module PrintUtil = struct
   let replace_apos s =
@@ -187,7 +186,7 @@ module FptProverHes = struct
   
   let hflz' : 'ty Hflz.t Fmt.t = hflz_' Prec.zero
   
-  let fixpoint : Hflmc2_syntax.Fixpoint.t Fmt.t =
+  let fixpoint : Hfl.Fixpoint.t Fmt.t =
     fun ppf t -> match t with
       | Least    -> Fmt.string ppf "mu"
       | Greatest -> Fmt.string ppf "nu"
@@ -212,10 +211,10 @@ module FptProverHes = struct
         hflz' phi
   
   let hflz_hes' : 'ty Hflz.hes Fmt.t =
-    fun ppf (entry, rules) ->
+    fun ppf hes ->
       Fmt.pf ppf "@[<v>%a\ns.t.\n%a@]"
-        hflz' entry
-        (Fmt.list hflz_hes_rule') rules
+        hflz' (top_formula_of hes)
+        (Fmt.list hflz_hes_rule') (equations_of hes)
     
   let save_hes_to_file ?(file) hes =
     let file = match file with Some s -> s | None -> Hflmc2_util.gen_temp_filename "/tmp/nuonly-" ".smt2" in
@@ -234,8 +233,8 @@ module MachineReadable = struct
   
   let fixpoint_ascii =
     fun ppf t -> match t with
-      | Hflmc2_syntax.Fixpoint.Least    -> Fmt.string ppf "u"
-      | Hflmc2_syntax.Fixpoint.Greatest -> Fmt.string ppf "v"
+      | Hfl.Fixpoint.Least    -> Fmt.string ppf "u"
+      | Hfl.Fixpoint.Greatest -> Fmt.string ppf "v"
 
   let hflz_' (_format_ty_ : Prec.t -> 'ty Fmt.t) (show_forall : bool) (without_id : bool) =
     let rec go_ (prec : Prec.t) (ppf : formatter) (phi : 'ty Hflz.t) = match phi with
@@ -298,10 +297,10 @@ module MachineReadable = struct
         (hflz' format_ty_ show_forall without_id) phi
   
   let hflz_hes' : (Prec.t -> 'ty Fmt.t) -> bool -> bool -> 'ty Hflz.hes Fmt.t =
-    fun format_ty_ show_forall without_id ppf (entry, rules) ->
+    fun format_ty_ show_forall without_id ppf hes ->
       Fmt.pf ppf "@[<v>@[<2>Sentry =v@ %a.@]@ %a@]"
-        (hflz' format_ty_ show_forall without_id) entry
-        (Fmt.list (hflz_hes_rule' format_ty_ show_forall without_id)) rules
+        (hflz' format_ty_ show_forall without_id) (top_formula_of hes)
+        (Fmt.list (hflz_hes_rule' format_ty_ show_forall without_id)) (equations_of hes)
     
   let save_hes_to_file ?(file) ?(without_id=false) show_forall hes =
     let file = match file with Some s -> s | None -> Hflmc2_util.gen_temp_filename "/tmp/nuonly-" ".smt2" in
@@ -310,7 +309,7 @@ module MachineReadable = struct
     (* Format.pp_set_margin fmt 1000; *)
     Format.pp_set_margin fmt !formula_margin;
     Printf.fprintf oc "%%HES\n" ;
-    hflz_hes' Hflmc2_syntax.Print.simple_ty_ show_forall without_id fmt hes;
+    hflz_hes' Hfl.Print.simple_ty_ show_forall without_id fmt hes;
     Format.pp_print_flush fmt ();
     close_out oc;
     file
@@ -382,7 +381,7 @@ module AsProgram = struct
   let hflz_hes_rule' : (Prec.t -> 'ty Fmt.t) -> bool -> bool -> 'ty Hflz.hes_rule Fmt.t =
     fun format_ty_ show_forall without_id ppf rule ->
       match rule.fix with
-      | Hflmc2_syntax.Fixpoint.Least -> begin
+      | Hfl.Fixpoint.Least -> begin
         let args, phi = Hflz.decompose_abs rule.body in
         (* 'ty Type.arg Id.t を表示したい *)
         Fmt.pf ppf "@[<2>and %s %a =@ %a@]"
@@ -393,10 +392,10 @@ module AsProgram = struct
       | Greatest -> failwith "AsProgram: GFP"
   
   let hflz_hes' : (Prec.t -> 'ty Fmt.t) -> bool -> bool -> 'ty Hflz.hes Fmt.t =
-    fun format_ty_ show_forall without_id ppf (entry, rules) ->
+    fun format_ty_ show_forall without_id ppf hes ->
       Fmt.pf ppf "@[<v>@[<2>let rec sentry () =@ %a@]@ %a@] "
-        (hflz' format_ty_ show_forall without_id) entry
-        (Fmt.list (hflz_hes_rule' format_ty_ show_forall without_id)) rules;
+        (hflz' format_ty_ show_forall without_id) (top_formula_of hes)
+        (Fmt.list (hflz_hes_rule' format_ty_ show_forall without_id)) (equations_of hes);
       Fmt.string ppf "let () = print_string (string_of_bool (sentry ()))"
     
   let save_hes_to_file ?(file) ?(without_id=false) hes =
@@ -405,20 +404,20 @@ module AsProgram = struct
     let fmt = Format.formatter_of_out_channel oc in
     (* Format.pp_set_margin fmt 1000; *)
     Format.pp_set_margin fmt !formula_margin;
-    hflz_hes' Hflmc2_syntax.Print.simple_ty_ true without_id fmt hes;
+    hflz_hes' Hfl.Print.simple_ty_ true without_id fmt hes;
     Format.pp_print_flush fmt ();
     close_out oc;
     file
 end
 
-let show_hflz = Hflmc2_util.fmt_string (hflz Hflmc2_syntax.Print.simple_ty_)
-let show_hflz_full v = Hflz.show (fun fmt ty_ -> Hflmc2_syntax.Type.pp_simple_ty fmt ty_) v
+let show_hflz = Hflmc2_util.fmt_string (hflz Hfl.Print.simple_ty_)
+let show_hflz_full v = Hflz.show (fun fmt ty_ -> Hfl.Type.pp_simple_ty fmt ty_) v
 let show_hes ?(readable=false) hes : string =
   if readable then
     "{" ^
     (List.map
       (fun rule ->
-        Id.to_string rule.var ^ " =" ^ (match rule.fix with Hflmc2_syntax.Fixpoint.Greatest -> "ν" | Least -> "μ") ^ " " ^ (show_hflz rule.body)
+        Id.to_string rule.var ^ " =" ^ (match rule.fix with Hfl.Fixpoint.Greatest -> "ν" | Least -> "μ") ^ " " ^ (show_hflz rule.body)
       )
       hes
     |> String.concat ";\n") ^ "}"
@@ -426,7 +425,7 @@ let show_hes ?(readable=false) hes : string =
     List.map
       (fun rule ->
         "{" ^
-        "fix: " ^ (Hflmc2_syntax.Fixpoint.show rule.fix) ^ "\n" ^
+        "fix: " ^ (Hfl.Fixpoint.show rule.fix) ^ "\n" ^
         (* "var: " ^ (Id.show Hflmc2_syntax.Type.pp_simple_ty rule.var) ^ "\n" ^ *)
         "var: (" ^ (Id.to_string rule.var) ^ " : " ^ Hflmc2_util.fmt_string simple_ty rule.var.ty ^ ")\n" ^
         "body: " ^ (show_hflz rule.body) ^ 

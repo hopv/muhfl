@@ -1,4 +1,4 @@
-open Hflmc2_syntax
+open Hfl
 module Env = Env_no_value
 open Add_arguments_definition
 
@@ -31,7 +31,7 @@ let eliminate_unused_universal_quantifiers_for_extra_arguments body =
   go body
 
 let infer with_partial_analysis with_usage_analysis (hes : 'a Hflz.hes) add_arg_coe1 add_arg_coe2 no_temp_files (do_not_use_inner_ty : bool) =
-  let original_rules = Hflz.merge_entry_rule hes in
+  let original_rules = Hflz_util.merge_entry_rule hes in
   let module PA = Add_arguments_infer_partial_application in
   
   let rules =
@@ -91,7 +91,7 @@ let infer with_partial_analysis with_usage_analysis (hes : 'a Hflz.hes) add_arg_
       (fun {Hflz.var; body; fix} ->
         {Hflz.var; body = eliminate_unused_universal_quantifiers_for_extra_arguments body; fix}
       ) rules in
-  let hes = Hflz.decompose_entry_rule rules in
+  let hes = Hflz_util.decompose_entry_rule rules in
   let hes = Hflz_typecheck.set_variable_ty hes in  
   Hflz_typecheck.type_check hes;
   hes, id_type_map, id_ho_map
