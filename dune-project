@@ -3,7 +3,7 @@
 (generate_opam_files)
 (using menhir 3.0)
 (source (github hopv/muhfl))
-(maintainers "Ken Sakayori <sakayori@kb.is.s.u-tokyo.ac.jp")
+(maintainers "Ken Sakayori <sakayori@kb.is.s.u-tokyo.ac.jp>")
 
 (package
   (name muhfl)
