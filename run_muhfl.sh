@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Options
-# --try-weak-subtype: try to solve nuHFL(Z) formulas with the katsura solver with the weak subtyping rules by Burn et al. in parallel
+# --try-weak-subtype: try to solve nuHFL(Z) formulas with rethfl with the weak subtyping rules by Burn et al. in parallel
 # --remove-disjunctions: try to solve nuHFL(Z) formulas with the disjunction removal transformation in parallel
 # --aggressive-simplification: simplify HFL(Z) formulas
 # --timeout: timeout for each approximation refinement iteration
@@ -12,7 +12,7 @@
 
 PATH=/home/kentotanahashi/hoice/target/release:/home/kentotanahashi/eldarica:/home/katsura/bin:$PATH \
   fptprove=/home/kentotanahashi/fptprove \
-  katsura_solver_path=/home/kentotanahashi/hflmc2-dev/_build/default/bin/main.exe \
+  rethfl_path=/home/kentotanahashi/hflmc2-dev/_build/default/bin/main.exe \
   /home/kentotanahashi/muapprox-dev/_build/default/bin/muapprox_main.exe \
     --try-weak-subtype --remove-disjunctions --aggressive-simplification --timeout=300 \
     "$@"

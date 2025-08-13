@@ -329,12 +329,12 @@ module MochiSolver : BackendSolver = struct
     )
 end
 
-let get_katsura_solver_path () =
-  match Stdlib.Sys.getenv_opt "katsura_solver_path" with
-  | None -> failwith "Please set environment variable `katsura_solver_path`"
+let get_rethfl_path () =
+  match Stdlib.Sys.getenv_opt "rethfl_path" with
+  | None -> failwith "Please set environment variable `rethfl_path`"
   | Some s -> s
   
-module KatsuraSolver : BackendSolver = struct
+module Rethfl : BackendSolver = struct
   include SolverCommon
   
   let replacer_path () =
@@ -402,7 +402,7 @@ module KatsuraSolver : BackendSolver = struct
 
 
   let solver_command hes_path solver_options will_try_weak_subtype remove_disjunction_only =
-    let solver_path = get_katsura_solver_path () in
+    let solver_path = get_rethfl_path () in
     Array.of_list (
       solver_path ::
         (if solver_options.no_disprove then ["--no-disprove"] else []) @
@@ -572,7 +572,7 @@ let solve_onlynu_onlyforall solve_options debug_context hes with_par will_try_we
       FptProverRecLimitSolver.run
     ) else (
       match solve_options.solver with
-      | Katsura -> KatsuraSolver.run
+      | Rethfl -> Rethfl.run
       | Iwayama -> IwayamaSolver.run
       | Suzuki  -> SuzukiSolver.run
       | Mochi -> MochiSolver.run

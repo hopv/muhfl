@@ -1,4 +1,4 @@
-type solver_type = Iwayama | Katsura | Suzuki | Mochi
+type solver_type = Iwayama | Rethfl | Suzuki | Mochi
 type first_order_solver_type = FptProverRecLimit
 
 let remove_temporary_files = ref false
@@ -54,7 +54,7 @@ type options =
 let get_solver solver_name = 
   match solver_name with
   | "iwayama" -> Iwayama
-  | "katsura" -> Katsura
+  | "rethfl" -> Rethfl
   | "suzuki"  -> Suzuki
   | "mochi" -> ((print_endline "In MoCHi solver mode, translation with correct evaluation order is not implemented, so we may output incorrect result or failure"); Mochi)
   | s -> failwith @@ "unknown solver \"" ^ s ^ "\""
@@ -64,8 +64,8 @@ let get_first_order_solver use_fo_solver =
   
 let get_backend_solver s solver =
   match solver with
-  | Katsura -> begin
-    (* backend-solver option is only for katsura-solver *)
+  | Rethfl-> begin
+    (* backend-solver option is only for rethfl *)
     let s = String.trim s in
     match s with
     | "" -> None
