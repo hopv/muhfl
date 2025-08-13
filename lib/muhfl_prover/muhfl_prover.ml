@@ -579,25 +579,7 @@ let solve_onlynu_onlyforall solve_options debug_context hes with_par will_try_we
     ) in
   run solve_options debug_context hes with_par will_try_weak_subtype rethfl_remove_disjunction >>| (fun s -> (s, debug_context))
 
-let is_nu_only_tractable hes =
-  let path = Manipulate.Print_syntax.MachineReadable.save_hes_to_file ~without_id:false true hes in
-  let solver_path = get_katsura_solver_path () in
-  let stdout_name = Hflmc2_util.gen_temp_filename "/tmp/" "_stdout.tmp" in
-  let command = "\"" ^ solver_path ^ "\" --tractable-check-only \"" ^ path ^ "\" > " ^ stdout_name in
-  log_string @@ "command: " ^ command;
-  Unix.system command
-  >>= (fun _ ->
-    Reader.file_lines stdout_name >>| (fun stdout_lines ->
-      match (List.rev stdout_lines) with
-      | last_line::_ -> begin
-        match last_line with
-        | "tractable" -> true
-        | "intractable" -> false
-        | _ -> failwith @@ "run_tractable_check: Illegal result (" ^ last_line ^ ")"
-      end
-      | _ -> failwith @@ "run_tractable_check: No result"
-    )
-  )
+let is_nu_only_tractable hes = Hfl.Trans.RemoveDisjunction.check hes
 
 let count_exists hes =
   let entry = Hflz.top_formula_of hes in
@@ -622,23 +604,19 @@ let should_instantiate_exists original_hes z3_path =
   let hes_ = Hflz_mani.encode_body_exists coe1 coe2 original_hes Hfl.IdMap.empty [] false in
   let hes_ = Hflz_mani.elim_mu_with_rec hes_ coe1 coe2 lexico_pair_number Hfl.IdMap.empty false [] z3_path in
   if not @@ Hflz.is_nuonly hes_ then failwith "elim_mu";
-  is_nu_only_tractable hes_
-  >>= (fun t_prover ->
-    let dual_hes = Hflz_mani.get_dual_hes original_hes in
-    let exists_count_disprover = count_exists dual_hes in
-    let dual_hes = Hflz_mani.encode_body_exists coe1 coe2 dual_hes Hfl.IdMap.empty [] false  in
-    let dual_hes = Hflz_mani.elim_mu_with_rec dual_hes coe1 coe2 lexico_pair_number Hfl.IdMap.empty false [] z3_path in
-    if not @@ Hflz.is_nuonly dual_hes then failwith "elim_mu";
-    is_nu_only_tractable dual_hes
-    >>| (fun t_disprover ->
-      let should_instantiate =
-        (not t_prover || not t_disprover) &&
-          exists_count_prover <= existential_quantifier_number_threthold && exists_count_disprover <= existential_quantifier_number_threthold in
-      log_string @@ "should_instantiate_exists: " ^ (string_of_bool should_instantiate) ^ " (tractable_prover=" ^ string_of_bool t_prover ^ ", tractable_disprover=" ^ string_of_bool t_disprover ^ ",exists_count_prover=" ^ string_of_int exists_count_prover ^ ", exists_count_disprover=" ^ string_of_int exists_count_disprover ^ ")";
-      should_instantiate
-    )
-  )
-  
+  let t_prover = is_nu_only_tractable hes_ in
+  let dual_hes = Hflz_mani.get_dual_hes original_hes in
+  let exists_count_disprover = count_exists dual_hes in
+  let dual_hes = Hflz_mani.encode_body_exists coe1 coe2 dual_hes Hfl.IdMap.empty [] false  in
+  let dual_hes = Hflz_mani.elim_mu_with_rec dual_hes coe1 coe2 lexico_pair_number Hfl.IdMap.empty false [] z3_path in
+  if not @@ Hflz.is_nuonly dual_hes then failwith "elim_mu";
+  let t_disprover = is_nu_only_tractable dual_hes in
+  let should_instantiate =
+    (not t_prover || not t_disprover) &&
+      exists_count_prover <= existential_quantifier_number_threthold && exists_count_disprover <= existential_quantifier_number_threthold in
+  log_string @@ "should_instantiate_exists: " ^ (string_of_bool should_instantiate) ^ " (tractable_prover=" ^ string_of_bool t_prover ^ ", tractable_disprover=" ^ string_of_bool t_disprover ^ ",exists_count_prover=" ^ string_of_int exists_count_prover ^ ", exists_count_disprover=" ^ string_of_int exists_count_disprover ^ ")";
+  should_instantiate
+
 let count_occuring (*id_type_map:(unit Hflmc2_syntax.Id.t, Manipulate.Hflz_util.variable_type, Hflmc2_syntax.IdMap.Key.comparator_witness) Base.Map.t*) hes s =
   let open Hfl in
   (* let ids =
@@ -1194,25 +1172,25 @@ let check_validity solve_options (hes : 'a Hflz.hes) cont =
       { solve_options with approx_parameter = initial_param }, iter_count_offset in
   
   let dresult =
+    let solve_options =
     (if solve_options.auto_existential_quantifier_instantiation && not solve_options.assign_values_for_exists_at_first_iteration then
-      should_instantiate_exists hes solve_options.z3_path
-      >>| (fun f ->
-        if f then { solve_options with assign_values_for_exists_at_first_iteration = true } else solve_options
-      )
+      if should_instantiate_exists hes solve_options.z3_path
+      then { solve_options with assign_values_for_exists_at_first_iteration = true }
+      else solve_options
     else
-      return solve_options)
-    >>= (fun solve_options ->
-      if solve_options.always_approximate then
-        check_validity_full_entry solve_options hes iter_count_offset
-      else begin
-        if Hflz.is_nuonly hes then
-          solve_onlynu_onlyforall_with_schedule solve_options hes
-        else if Hflz.is_muonly hes then
-          solve_onlynu_onlyforall_with_schedule solve_options (Hflz_mani.get_dual_hes hes)
-          >>| (fun (status_pair, i) -> (Status.flip status_pair, i))
-        else check_validity_full_entry solve_options hes iter_count_offset
+      solve_options)
+    in
+    if solve_options.always_approximate then
+      check_validity_full_entry solve_options hes iter_count_offset
+    else begin
+      if Hflz.is_nuonly hes then
+        solve_onlynu_onlyforall_with_schedule solve_options hes
+      else if Hflz.is_muonly hes then
+        solve_onlynu_onlyforall_with_schedule solve_options (Hflz_mani.get_dual_hes hes)
+        >>| (fun (status_pair, i) -> (Status.flip status_pair, i))
+      else check_validity_full_entry solve_options hes iter_count_offset
       end
-    ) in
+  in
   upon dresult (
     fun (result, info) ->
       cont (result, info);
