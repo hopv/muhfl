@@ -46,9 +46,6 @@ docker run -v <path_to_repositoy>/benchmark/inputs:/home/opam/inputs/ <image_id>
 
 ## Other tools
 
-* ``bin2/branching_time_program_converter.ml``: Reduce a Omega regular property verification problem for OCaml-like program to HFL(Z) validity checking problem.
-  * e.g., ``dune exec bin2/branching_time_program_converter.exe --  benchmark/inputs/paper/fair_termination_ho/murase_closure_2.txt``
-
 * ``bin2/dual.ml``: Output a dual formula of a given formula
   * e.g., ``dune exec bin2/dual.exe -- benchmark/inputs/paper/termination/sum.in``
 
